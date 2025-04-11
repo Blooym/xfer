@@ -1,0 +1,28 @@
+[package]
+name = "xfer"
+authors = ["Blooym"]
+description = "Client for securely transferring files across the internet"
+version = "0.0.0"
+edition = "2024"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[dependencies]
+anyhow = { version = "1.0.97", features = ["backtrace"] }
+blake3 = "1.8.1"
+chacha20poly1305 = { version = "0.10.1", features = ["std"] }
+clap = { version = "4.5.35", features = ["derive", "string", "env"] }
+hex = "0.4.3"
+indicatif = "0.17.11"
+inquire = "0.7.5"
+reqwest = { version = "0.12.15", default-features = false, features = [
+    "rustls-tls",
+    "blocking",
+    "json",
+] }
+time = "0.3.41"
+url = { version = "2.5.4", features = ["serde"] }
+serde = { version = "1.0.219", features = ["derive"] }
+tar = "0.4.44"
+flate2 = "1.1.1"
