@@ -7,7 +7,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use flate2::{Compression, bufread::GzEncoder};
-use humansize::{BINARY, format_size};
+use humansize::{DECIMAL, format_size};
 use indicatif::ProgressBar;
 use inquire::Confirm;
 use std::{
@@ -91,7 +91,7 @@ impl ExecutableCommand for UploadCommand {
         ));
         let client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
         let server_config = client.get_server_config()?;
-        let bytes_human = format_size(server_config.transfer.max_size_bytes, BINARY);
+        let bytes_human = format_size(server_config.transfer.max_size_bytes, DECIMAL);
         if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
             bail!(
                 "Upload is larger than the server's maximum size of {} bytes",
