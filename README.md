@@ -18,10 +18,12 @@ Securely transfer files across the internet with end-to-end encryption.
 
 ## Installation
 
-### using Cargo
+*More installation options may become available in the future.*
+
+### Using Cargo
 
 ```sh
-cargo install --bin xfer --git https://github.com/Blooym/xfer.git
+cargo install --git https://github.com/Blooym/xfer.git xfer
 ```
 
 ## Usage
