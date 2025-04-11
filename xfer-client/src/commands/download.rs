@@ -6,7 +6,7 @@ use crate::{
 };
 use anyhow::{Context, bail};
 use clap::Parser;
-use humansize::{BINARY, format_size};
+use humansize::{DECIMAL, format_size};
 use indicatif::ProgressBar;
 use inquire::Confirm;
 use std::{fs, io::Cursor, path::PathBuf};
@@ -63,7 +63,7 @@ impl ExecutableCommand for DownloadCommand {
                     .map(|f| f.to_str().unwrap())
                     .unwrap_or("0")
                     .parse::<u64>()?,
-                BINARY,
+                DECIMAL,
             )
         };
 
