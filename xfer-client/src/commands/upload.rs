@@ -19,7 +19,7 @@ use std::{
 use time::UtcDateTime;
 use url::Url;
 
-/// Encrypt and create a transfer on the relay server.
+/// Encrypt and create a transfer via a transfer server.
 #[derive(Parser)]
 pub struct UploadCommand {
     /// File or directory to transfer.
@@ -34,7 +34,7 @@ pub struct UploadCommand {
     /// URL (including scheme) of the server create the transfer on.
     #[clap(
         short = 's',
-        env = "XFER_CLIENT_RELAY_SERVER",
+        env = "XFER_CLIENT_TRANSFER_SERVER",
         long = "server",
         required = true
     )]

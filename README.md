@@ -11,10 +11,9 @@ Securely transfer files across the internet with end-to-end encryption.
 
 ## Features
 
-- End-to-end encrypted transfer via relay server.
+- End-to-end encrypted and sent via transfer server.
 - Supports uploading files and folders with full metadata retention.
 - Efficient compression for faster transfers.
-- Host your own transfer relay locally for fast local network transfers.
 
 ## Installation
 
