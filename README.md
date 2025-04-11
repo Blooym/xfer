@@ -52,7 +52,7 @@ $ xfer download <transfer_id> -s https://example.com -o ./xfer-downloads
 
 When downloading a transfer files will be placed in the output directory, and folders will have their root folder placed in the output directory.
 
-## XFer Server Directory
+## Xfer Server Directory
 
 ***Note:*** *Although xfer encrypts data client-side, you should still have some trust in the server you use to faciliate your transfer.*
 
