@@ -52,7 +52,7 @@ impl ExecutableCommand for DownloadCommand {
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
-        let client = XferApiClient::new(Url::parse("a").unwrap(), reqwest::blocking::Client::new());
+        let client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
         let server_transfer_id = &Cryptography::create_hash(&self.key)[..REMOTE_ID_HASH_SNIP_AT];
         let transfer_size = {
             let res = client.transfer_metadata(server_transfer_id)?;
