@@ -1,0 +1,6 @@
+[workspace]
+resolver = "3"
+members = ["xfer-server", "xfer-client"]
+
+[profile.release]
+lto = true

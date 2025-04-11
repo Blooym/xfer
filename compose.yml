@@ -1,0 +1,12 @@
+services:
+  xfer:
+    container_name: xfer
+    build: .
+    restart: unless-stopped
+    ports:
+      - 8255:8255
+    volumes:
+      - xfer-data:/srv/xfer
+
+volumes:
+  xfer-data:
