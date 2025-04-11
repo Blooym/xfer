@@ -68,14 +68,7 @@ impl ExecutableCommand for UploadCommand {
             return Ok(());
         }
 
-        let prog_bar = ProgressBar::new_spinner();
-        prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
-
         // Compress into an archive.
-        prog_bar.set_message(format!(
-            "Creating archive from '{}'",
-            path_canonical.display()
-        ));
         let mut tar =
             tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
         if self.path.is_file() {
@@ -87,7 +80,14 @@ impl ExecutableCommand for UploadCommand {
         }
         let mut tar = tar.into_inner()?.into_inner().into_inner();
 
+        let prog_bar = ProgressBar::new_spinner();
+        prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
+
         // Encrypt and validate the archive size with the server.
+        prog_bar.set_message(format!(
+            "Creating archive from '{}'",
+            path_canonical.display()
+        ));
         let client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
         let server_config = client.get_server_config()?;
         if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
