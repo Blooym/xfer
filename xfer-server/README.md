@@ -24,7 +24,7 @@ docker compose up -d
 2. Install the project binary
 
 ```
-cargo install --bin xfer-server --git https://github.com/Blooym/xfer.git
+cargo install --git https://github.com/Blooym/xfer.git xfer-server
 ```
 
 3. Set configuration values as necessary.
