@@ -12,7 +12,7 @@ use std::{fs, io::Cursor, path::PathBuf};
 use tar::Archive;
 use url::Url;
 
-/// Download and decrypt a transfer from the relay server.
+/// Download and decrypt a transfer from a transfer server.
 #[derive(Parser)]
 pub struct DownloadCommand {
     /// Transfer key for the upload that should be downloaded.
@@ -32,7 +32,7 @@ pub struct DownloadCommand {
     /// URL (including scheme) of the server to download the transfer from.
     #[clap(
         short = 's',
-        env = "XFER_CLIENT_RELAY_SERVER",
+        env = "XFER_CLIENT_TRANSFER_SERVER",
         long = "server",
         required = true
     )]
