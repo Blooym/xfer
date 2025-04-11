@@ -7,6 +7,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use flate2::{Compression, bufread::GzEncoder};
+use humansize::{BINARY, format_size};
 use indicatif::ProgressBar;
 use inquire::Confirm;
 use std::{
@@ -90,10 +91,11 @@ impl ExecutableCommand for UploadCommand {
         ));
         let client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
         let server_config = client.get_server_config()?;
+        let bytes_human = format_size(server_config.transfer.max_size_bytes, BINARY);
         if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
             bail!(
                 "Upload is larger than the server's maximum size of {} bytes",
-                server_config.transfer.max_size_bytes
+                bytes_human
             )
         }
         prog_bar.set_message("Encrypting archive");
@@ -101,7 +103,7 @@ impl ExecutableCommand for UploadCommand {
         if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
             bail!(
                 "Upload is larger than the server's maximum size of {} bytes after encryption due to overhead",
-                server_config.transfer.max_size_bytes
+                bytes_human
             )
         }
 
@@ -114,8 +116,16 @@ impl ExecutableCommand for UploadCommand {
 
         // Tell the user how the file can be downloaded.
         println!(
-            "Uploaded '{}' successfully - it will be available until {:?} (UTC).\n\nThe recipient can download by running:\n{} download '{}' -s '{}' -o <PATH>",
+            "Transfer of '{}' created successfully.\n\nDownload by running:\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire at {:?} UTC",
             path_canonical.display(),
+            env::current_exe()
+                .unwrap()
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap(),
+            decryption_key,
+            self.server,
             UtcDateTime::from_unix_timestamp(
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
@@ -128,14 +138,6 @@ impl ExecutableCommand for UploadCommand {
                     .unwrap()
             )
             .unwrap(),
-            env::current_exe()
-                .unwrap()
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            decryption_key,
-            self.server
         );
 
         Ok(())
