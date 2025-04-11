@@ -6,6 +6,7 @@ use crate::{
 };
 use anyhow::{Context, bail};
 use clap::Parser;
+use humansize::{BINARY, format_size};
 use indicatif::ProgressBar;
 use inquire::Confirm;
 use std::{fs, io::Cursor, path::PathBuf};
@@ -56,17 +57,20 @@ impl ExecutableCommand for DownloadCommand {
         let server_transfer_id = &Cryptography::create_hash(&self.key)[..REMOTE_ID_HASH_SNIP_AT];
         let transfer_size = {
             let res = client.transfer_metadata(server_transfer_id)?;
-            res.headers()
-                .get("Content-Length")
-                .map(|f| f.to_str().unwrap())
-                .unwrap_or("0")
-                .parse::<u128>()?
+            format_size(
+                res.headers()
+                    .get("Content-Length")
+                    .map(|f| f.to_str().unwrap())
+                    .unwrap_or("0")
+                    .parse::<u64>()?,
+                BINARY,
+            )
         };
 
         // Ensure the user wants to continue and download.
         if !self.no_confirm
             && !Confirm::new(&format!(
-                "Are you sure you want to download {} bytes?",
+                "Are you sure you want to download this transfer ({})?",
                 transfer_size,
             ))
             .with_default(false)
@@ -75,8 +79,8 @@ impl ExecutableCommand for DownloadCommand {
             return Ok(());
         }
 
-        let prog_bar =
-            ProgressBar::new_spinner().with_message(format!("Downloading {} bytes", transfer_size));
+        let prog_bar = ProgressBar::new_spinner()
+            .with_message(format!("Downloading transfer ({})", transfer_size));
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Download & decrypt the archive and unpack it on disk.

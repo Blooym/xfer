@@ -26,3 +26,4 @@ url = { version = "2.5.4", features = ["serde"] }
 serde = { version = "1.0.219", features = ["derive"] }
 tar = "0.4.44"
 flate2 = "1.1.1"
+humansize = "2.1.3"
