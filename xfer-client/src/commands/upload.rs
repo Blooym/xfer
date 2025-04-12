@@ -7,8 +7,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use flate2::{Compression, bufread::GzEncoder};
-use humansize::{DECIMAL, format_size};
-use indicatif::ProgressBar;
+use indicatif::{HumanBytes, ProgressBar};
 use inquire::Confirm;
 use std::{
     env, fs,
@@ -17,10 +16,10 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use time::UtcDateTime;
+use time::{UtcDateTime, format_description};
 use url::Url;
 
-/// Encrypt and create a transfer via a transfer server.
+/// Encrypt and create a transfer via a relay server.
 #[derive(Parser)]
 pub struct UploadCommand {
     /// File or directory to transfer.
@@ -33,12 +32,7 @@ pub struct UploadCommand {
     no_confirm: bool,
 
     /// URL (including scheme) of the server create the transfer on.
-    #[clap(
-        short = 's',
-        env = "XFER_CLIENT_TRANSFER_SERVER",
-        long = "server",
-        required = true
-    )]
+    #[clap(short = 's', env = "XFER_CLIENT_RELAY_SERVER", long = "server")]
     server: Url,
 }
 
@@ -85,59 +79,57 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Encrypt and validate the archive size with the server.
-        prog_bar.set_message(format!(
-            "Creating archive from '{}'",
-            path_canonical.display()
-        ));
-        let client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
-        let server_config = client.get_server_config()?;
-        let bytes_human = format_size(server_config.transfer.max_size_bytes, DECIMAL);
-        if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
+        prog_bar.set_message(format!("Creating transfer archive of '{}'", path_name));
+        let api_client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
+        let server_config = api_client.get_server_config()?;
+        let bytes_human = HumanBytes(server_config.transfer.max_size_bytes);
+        if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
-                "Upload is larger than the server's maximum size of {} bytes",
+                "Transfer archive is larger than the server's maximum size of {}",
                 bytes_human
             )
         }
-        prog_bar.set_message("Encrypting archive");
+        prog_bar.set_message("Encrypting transfer archive");
         let decryption_key = Cryptography::encrypt_in_place(&mut tar)?;
-        if tar.len() > server_config.transfer.max_size_bytes.try_into()? {
+        if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
-                "Upload is larger than the server's maximum size of {} bytes after encryption due to overhead",
+                "Transfer archive is larger than the server's maximum size of {} after encryption overhead",
                 bytes_human
             )
         }
 
         // Upload the archive.
-        prog_bar.set_message(format!("Uploading archive to server ({} bytes)", tar.len()));
+        prog_bar.set_message(format!(
+            "Uploading transfer archive to server ({})",
+            HumanBytes(tar.len() as u64)
+        ));
         let server_identifier =
             &Cryptography::create_hash(&decryption_key)[..REMOTE_ID_HASH_SNIP_AT];
-        client.create_transfer(server_identifier, tar)?;
+        api_client.create_transfer(server_identifier, tar)?;
         prog_bar.finish_and_clear();
 
         // Tell the user how the file can be downloaded.
         println!(
-            "Transfer of '{}' created successfully.\n\nDownload by running:\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire at {:?} UTC",
-            path_canonical.display(),
-            env::current_exe()
-                .unwrap()
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire on {}",
+            path_name,
+            env::current_exe()?
                 .file_name()
-                .unwrap()
+                .context("current exe filename was None")?
                 .to_str()
-                .unwrap(),
+                .context("failed to convert exe filename to str")?,
             decryption_key,
             self.server,
             UtcDateTime::from_unix_timestamp(
                 SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
+                    .duration_since(UNIX_EPOCH)?
                     .add(Duration::from_millis(
-                        server_config.transfer.expire_after_ms.try_into().unwrap(),
+                        server_config.transfer.expire_after_ms as u64,
                     ))
-                    .as_secs()
-                    .try_into()
-                    .unwrap()
-            )
-            .unwrap(),
+                    .as_secs() as i64
+            )?
+            .format(&format_description::parse(
+                "[day]-[month]-[year] at [hour]:[minute]:[second] UTC",
+            )?)?,
         );
 
         Ok(())

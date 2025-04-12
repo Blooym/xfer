@@ -6,14 +6,7 @@ use anyhow::Result;
 use clap::Parser;
 use commands::{DownloadCommand, UploadCommand};
 
-#[derive(Parser)]
-#[command(author, version, about, long_about)]
-struct RootCommand {
-    #[clap(subcommand)]
-    command: Command,
-}
-
-pub trait ExecutableCommand {
+pub trait ExecutableCommand: Parser {
     /// Consume `self` and run the command.
     fn run(self) -> Result<()>;
 }
@@ -22,6 +15,13 @@ pub trait ExecutableCommand {
 enum Command {
     Upload(UploadCommand),
     Download(DownloadCommand),
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about)]
+struct RootCommand {
+    #[clap(subcommand)]
+    command: Command,
 }
 
 impl ExecutableCommand for RootCommand {

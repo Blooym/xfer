@@ -85,17 +85,13 @@ async fn main() -> Result<()> {
     let router = Router::new()
         .route("/", get(routes::index_handler))
         .route("/configuration", get(routes::configuration_handler))
-        .route("/transfer/{id}", post(routes::upload_handler))
+        .route("/transfer/{id}", post(routes::create_transfer_handler))
         .route(
             "/transfer/{id}",
-            get(routes::download_get_handler.layer(DefaultBodyLimit::max(
-                args.transfer_max_size
-                    .0
-                    .try_into()
-                    .context("transfer limit does not fit into usize")?,
-            ))),
+            get(routes::download_transfer_handler
+                .layer(DefaultBodyLimit::max(args.transfer_max_size.0 as usize))),
         )
-        .route("/transfer/{id}", head(routes::download_head_handler))
+        .route("/transfer/{id}", head(routes::transfer_metadata_handler))
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(trace::DefaultMakeSpan::new().level(Level::INFO))
