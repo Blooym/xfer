@@ -1,7 +1,5 @@
 use crate::{
-    ExecutableCommand,
-    api_client::XferApiClient,
-    commands::{PROGRESS_BAR_TICKRATE, SERVER_TRANSFER_ID_LEN},
+    ExecutableCommand, api_client::XferApiClient, commands::PROGRESS_BAR_TICKRATE,
     cryptography::Cryptography,
 };
 use anyhow::{Context, Result, bail};
@@ -103,20 +101,18 @@ impl ExecutableCommand for UploadCommand {
             "Uploading transfer archive to server ({})",
             HumanBytes(tar.len() as u64)
         ));
-        let server_identifier = &Cryptography::hash_data(&decryption_key)[..SERVER_TRANSFER_ID_LEN];
-        api_client.create_transfer(server_identifier, tar)?;
+        let transfer_response = api_client.create_transfer(tar)?;
         prog_bar.finish_and_clear();
 
-        // Tell the user how the file can be downloaded.
         println!(
-            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire on {}",
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download {} -s '{}' -o <PATH>\n\nThis transfer will expire on {}",
             path_name,
             env::current_exe()?
                 .file_name()
                 .context("current exe filename was None")?
                 .to_str()
                 .context("failed to convert exe filename to str")?,
-            decryption_key,
+            format_args!("{}/{}", transfer_response.id, decryption_key),
             self.server,
             UtcDateTime::from_unix_timestamp(
                 SystemTime::now()

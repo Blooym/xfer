@@ -85,7 +85,7 @@ async fn main() -> Result<()> {
     let router = Router::new()
         .route("/", get(routes::index_handler))
         .route("/configuration", get(routes::configuration_handler))
-        .route("/transfer/{id}", post(routes::create_transfer_handler))
+        .route("/transfer", post(routes::create_transfer_handler))
         .route(
             "/transfer/{id}",
             get(routes::download_transfer_handler
