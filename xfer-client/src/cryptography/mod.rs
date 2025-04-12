@@ -1,43 +1,36 @@
-mod wordlist;
-
 use anyhow::{Context, Result};
 use argon2::Argon2;
 use chacha20poly1305::{
     AeadCore, KeyInit,
     aead::{Aead, AeadMutInPlace, OsRng, generic_array::typenum::Unsigned, rand_core::RngCore},
 };
-use rand::seq::SliceRandom;
-use wordlist::EFF_LARGE_WORDLIST;
+use rand::seq::IndexedRandom;
 
 type CryptoImpl = chacha20poly1305::XChaCha20Poly1305;
 type CryptoNonce = chacha20poly1305::XNonce;
 type CryptoNonceSize = <CryptoImpl as AeadCore>::NonceSize;
 
-const PASSPHRASE_WORDS: usize = 5;
-const PASSPHRASE_SEPERATOR: &str = "-";
+const PASSPHRASE_MIN_LENGTH: usize = 24;
+const PASSPHRASE_SEPARATOR: &str = "-";
 const ARGON2_KEY_LEN: usize = 32;
 const ARGON2_SALT_LEN: usize = 32;
 
-#[derive(Debug)]
 pub struct Cryptography;
 
 impl Cryptography {
-    /// Generate a passphrase from the provided wordlist.
-    fn generate_passphrase(
-        wordlist: &'static [&'static str],
-        words: usize,
-        seperator: &str,
-    ) -> String {
-        let mut word_vec = wordlist.to_vec();
-        word_vec.shuffle(&mut rand::rng());
-        word_vec[..words].join(seperator)
-    }
-
-    /// Create a hash of the given data.
-    pub fn hash_data(data: impl AsRef<[u8]>) -> String {
-        let mut hasher = blake3::Hasher::new();
-        hasher.update(data.as_ref());
-        hasher.finalize().to_hex().to_string()
+    /// Generate a passphrase from the [`EFF_LARGE_WORDLIST`].
+    fn generate_passphrase(len: usize, separator: &str) -> String {
+        let mut total_bytes = 0;
+        let mut words = Vec::new();
+        while total_bytes < len {
+            let word = eff_wordlist::large::LIST
+                .choose(&mut rand::rng())
+                .unwrap()
+                .1;
+            words.push(word);
+            total_bytes += word.len();
+        }
+        words.join(separator)
     }
 
     /// Encrypt a byte array in-place.
@@ -48,8 +41,7 @@ impl Cryptography {
     /// This method returns the raw human-readable key that was used for encryption.
     pub fn encrypt_in_place(bytes: &mut Vec<u8>) -> Result<String> {
         // Generate a user-friendly key, a random salt, and run it through argon2.
-        let key =
-            Self::generate_passphrase(EFF_LARGE_WORDLIST, PASSPHRASE_WORDS, PASSPHRASE_SEPERATOR);
+        let key = Self::generate_passphrase(PASSPHRASE_MIN_LENGTH, PASSPHRASE_SEPARATOR);
         let mut salt = [0u8; ARGON2_SALT_LEN];
         let mut derived_key = [0u8; ARGON2_KEY_LEN];
         OsRng.fill_bytes(&mut salt);
@@ -81,7 +73,7 @@ impl Cryptography {
         let (nonce, bytes) = rest.split_at(CryptoNonceSize::to_usize());
         let mut derived_key = [0u8; 32];
         Argon2::default()
-            .hash_password_into(key.as_bytes(), &salt, &mut derived_key)
+            .hash_password_into(key.as_bytes(), salt, &mut derived_key)
             .unwrap();
 
         // Decrypt bytes
