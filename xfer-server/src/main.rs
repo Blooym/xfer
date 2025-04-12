@@ -1,7 +1,7 @@
 mod routes;
 mod storage;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use axum::{
     Router,
     extract::{DefaultBodyLimit, Request},

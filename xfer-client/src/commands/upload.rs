@@ -1,8 +1,8 @@
 use crate::{
     ExecutableCommand,
     api_client::XferApiClient,
-    commands::PROGRESS_BAR_TICKRATE,
-    cryptography::{Cryptography, REMOTE_ID_HASH_SNIP_AT},
+    commands::{PROGRESS_BAR_TICKRATE, SERVER_TRANSFER_ID_LEN},
+    cryptography::Cryptography,
 };
 use anyhow::{Context, Result, bail};
 use clap::Parser;
@@ -103,8 +103,7 @@ impl ExecutableCommand for UploadCommand {
             "Uploading transfer archive to server ({})",
             HumanBytes(tar.len() as u64)
         ));
-        let server_identifier =
-            &Cryptography::create_hash(&decryption_key)[..REMOTE_ID_HASH_SNIP_AT];
+        let server_identifier = &Cryptography::hash_data(&decryption_key)[..SERVER_TRANSFER_ID_LEN];
         api_client.create_transfer(server_identifier, tar)?;
         prog_bar.finish_and_clear();
 

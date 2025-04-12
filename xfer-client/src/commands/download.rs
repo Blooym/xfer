@@ -1,8 +1,8 @@
 use crate::{
     ExecutableCommand,
     api_client::XferApiClient,
-    commands::PROGRESS_BAR_TICKRATE,
-    cryptography::{Cryptography, REMOTE_ID_HASH_SNIP_AT},
+    commands::{PROGRESS_BAR_TICKRATE, SERVER_TRANSFER_ID_LEN},
+    cryptography::Cryptography,
 };
 use anyhow::{Context, bail};
 use clap::Parser;
@@ -45,7 +45,7 @@ impl ExecutableCommand for DownloadCommand {
         }
 
         let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
-        let server_transfer_id = &Cryptography::create_hash(&self.key)[..REMOTE_ID_HASH_SNIP_AT];
+        let server_transfer_id = &Cryptography::hash_data(&self.key)[..SERVER_TRANSFER_ID_LEN];
 
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
