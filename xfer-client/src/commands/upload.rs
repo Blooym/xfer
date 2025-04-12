@@ -17,7 +17,7 @@ use std::{
 use time::{UtcDateTime, format_description};
 use url::Url;
 
-/// Encrypt and create a transfer via a relay server.
+/// Encrypt and create a transfer on a relay server.
 #[derive(Parser)]
 pub struct UploadCommand {
     /// File or directory to transfer.
