@@ -2,12 +2,12 @@ use crate::AppState;
 use axum::{
     body::{self, Body},
     extract::{Path, State},
-    http::StatusCode,
+    http::{StatusCode, header::CONTENT_LENGTH},
     response::IntoResponse,
 };
 use tracing::warn;
 
-pub async fn upload_handler(
+pub async fn create_transfer_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
     body: Body,
@@ -49,4 +49,28 @@ pub async fn upload_handler(
         .save_transfer(&id, &body_bytes)
         .unwrap();
     StatusCode::CREATED.into_response()
+}
+
+pub async fn download_transfer_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    if !state.storage_provider.transfer_exists(&id).unwrap() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    Body::from(state.storage_provider.get_transfer(&id).unwrap()).into_response()
+}
+
+pub async fn transfer_metadata_handler(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    if !state.storage_provider.transfer_exists(&id).unwrap() {
+        return StatusCode::NOT_FOUND.into_response();
+    }
+    [(
+        CONTENT_LENGTH,
+        state.storage_provider.get_transfer(&id).unwrap().len(),
+    )]
+    .into_response()
 }
