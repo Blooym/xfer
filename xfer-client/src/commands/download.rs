@@ -1,7 +1,5 @@
 use crate::{
-    ExecutableCommand,
-    api_client::XferApiClient,
-    commands::{PROGRESS_BAR_TICKRATE, SERVER_TRANSFER_ID_LEN},
+    ExecutableCommand, api_client::XferApiClient, commands::PROGRESS_BAR_TICKRATE,
     cryptography::Cryptography,
 };
 use anyhow::{Context, bail};
@@ -15,8 +13,14 @@ use url::Url;
 /// Download and decrypt a transfer from a relay server.
 #[derive(Parser)]
 pub struct DownloadCommand {
-    /// Transfer key for the upload that should be downloaded.
-    key: String,
+    /// Key of the transfer to download.
+    ///
+    /// A transfer key is made up of 2 parts seperated by a slash:
+    ///
+    ///  - The first part is the key required to fetch the transfer.
+    ///
+    ///  - The second part is the key requried to decrypt the transfer.
+    transfer_key: String,
 
     /// Skip all confirmation dialogues.
     #[clap(short = 'y', env = "XFER_CLIENT_NOCONFIRM", long = "yes")]
@@ -44,14 +48,18 @@ impl ExecutableCommand for DownloadCommand {
             bail!("output directory must be a directory and not a file");
         }
 
-        let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
-        let server_transfer_id = &Cryptography::hash_data(&self.key)[..SERVER_TRANSFER_ID_LEN];
+        // Split the key into the appropriate parts
+        let (transfer_id, decryption_key) = self
+            .transfer_key
+            .split_once("/")
+            .context("malformed transfer key")?;
 
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
+        let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
         let human_transfer_size = {
-            let res = api_client.transfer_metadata(server_transfer_id)?;
+            let res = api_client.transfer_metadata(transfer_id)?;
             HumanBytes(
                 res.headers()
                     .get("Content-Length")
@@ -78,9 +86,9 @@ impl ExecutableCommand for DownloadCommand {
 
         // Download & decrypt the archive and unpack it on disk.
         let mut decrypted_archive = {
-            let res = api_client.download_transfer(server_transfer_id)?;
+            let res = api_client.download_transfer(transfer_id)?;
             prog_bar.set_message("Decrypting transfer archive");
-            let archive = Cryptography::decrypt(&res.bytes()?, &self.key)?;
+            let archive = Cryptography::decrypt(&res.bytes()?, decryption_key)?;
             Archive::new(Cursor::new(archive))
         };
         prog_bar.set_message("Unpacking transfer archive");

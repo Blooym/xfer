@@ -1,22 +1,27 @@
 use anyhow::{Context, Result, bail};
 use reqwest::blocking::Response;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use url::Url;
 
-pub struct XferApiClient {
-    base_url: Url,
-    inner_client: reqwest::blocking::Client,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct ServerConfigurationResponse {
     pub transfer: TransferConfiguration,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Deserialize)]
 pub struct TransferConfiguration {
     pub expire_after_ms: u128,
     pub max_size_bytes: u64,
+}
+
+#[derive(Deserialize)]
+pub struct CreateTransferResponse {
+    pub id: String,
+}
+
+pub struct XferApiClient {
+    base_url: Url,
+    inner_client: reqwest::blocking::Client,
 }
 
 impl XferApiClient {
@@ -44,10 +49,10 @@ impl XferApiClient {
         Ok(res.json::<ServerConfigurationResponse>()?)
     }
 
-    pub fn create_transfer(&self, id: &str, body: Vec<u8>) -> Result<Response> {
+    pub fn create_transfer(&self, body: Vec<u8>) -> Result<CreateTransferResponse> {
         let res = self
             .inner_client
-            .post(self.base_url.join(&format!("transfer/{id}"))?)
+            .post(self.base_url.join("transfer")?)
             .body(body)
             .send()
             .context("create transfer upload request failed before response")?;
@@ -58,7 +63,7 @@ impl XferApiClient {
                 res.text().unwrap_or_default(),
             );
         }
-        Ok(res)
+        Ok(res.json::<CreateTransferResponse>()?)
     }
 
     pub fn download_transfer(&self, id: &str) -> Result<Response> {
