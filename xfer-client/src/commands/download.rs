@@ -60,7 +60,7 @@ impl ExecutableCommand for DownloadCommand {
         let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
         let human_transfer_size = {
             let res = api_client.transfer_metadata(transfer_id).context(
-                "failed to obtain transfer data - ensure you entered the transfer key server url correctly"
+                "failed to get transfer - transfer may have expired, transfer key may be incorrect, or server may have returned an error"
             )?;
             DecimalBytes(
                 res.headers()
