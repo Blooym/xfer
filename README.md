@@ -34,13 +34,13 @@ These examples will assume you're using the default xfer server. Use the `--serv
 ### Transfer a file
 
 ```sh
-$ xfer upload ./essay.txt -s https://example.com
+$ xfer upload ./essay.txt
 ```
 
 ### Transfer a folder
 
 ```sh
-$ xfer upload ./photos -s https://example.com
+$ xfer upload ./photos
 ```
 
 Note that when creating a directory transfer all subdirectories will also be included.
@@ -48,7 +48,7 @@ Note that when creating a directory transfer all subdirectories will also be inc
 ### Download a transfer
 
 ```sh
-$ xfer download <transfer_id> -s https://example.com -o ./xfer-downloads
+$ xfer download <transfer_id> -o ./xfer-downloads
 ```
 
 When downloading a transfer files will be placed in the output directory, and folders will have their root folder placed in the output directory.
