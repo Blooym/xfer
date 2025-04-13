@@ -1,7 +1,5 @@
 use crate::{
-    ExecutableCommand,
-    api_client::XferApiClient,
-    commands::{DEFAULT_SERVER_URL, PROGRESS_BAR_TICKRATE},
+    DEFAULT_SERVER_URL, ExecutableCommand, PROGRESS_BAR_TICKRATE, api_client::XferApiClient,
     cryptography::Cryptography,
 };
 use anyhow::{Context, bail};

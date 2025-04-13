@@ -2,9 +2,15 @@ mod api_client;
 mod commands;
 mod cryptography;
 
+use std::time::Duration;
+
 use anyhow::Result;
 use clap::Parser;
 use commands::{DownloadCommand, UploadCommand};
+
+// Compile-time options
+pub const DEFAULT_SERVER_URL: &str = "https://xfer.blooym.dev/"; // Must end with trailing slash.
+pub const PROGRESS_BAR_TICKRATE: Duration = Duration::from_millis(200);
 
 pub trait ExecutableCommand: Parser {
     /// Consume `self` and run the command.
