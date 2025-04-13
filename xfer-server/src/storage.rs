@@ -1,10 +1,10 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use std::{
     fs::{self},
     path::PathBuf,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info, trace, warn};
 
 #[derive(Debug)]
 pub struct StorageProvider {
@@ -23,7 +23,18 @@ impl StorageProvider {
 
     fn is_transfer_expired(&self, id: &str) -> Result<bool> {
         let metadata = fs::metadata(self.base_dir.join(id))?;
-        Ok(metadata.created()? + self.expire_after <= SystemTime::now())
+        // btime isn't available on all targets/environments (e.g some containers)
+        // if this happens we just fallback to mtime which is usually available.
+        let write_date = match metadata.created() {
+            Ok(ctime) => ctime,
+            Err(err) => {
+                trace!("unable to get btime for {id} - using mtime: {err}");
+                metadata
+                    .modified()
+                    .context("unable to obtain btime or mtime for file")?
+            }
+        };
+        Ok(write_date + self.expire_after <= SystemTime::now())
     }
 
     pub fn remove_expired_transfers(&self) -> Result<()> {
