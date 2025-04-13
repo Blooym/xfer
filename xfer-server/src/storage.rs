@@ -53,7 +53,7 @@ impl StorageProvider {
                         }
                     }
                     Err(err) => {
-                        warn!("Failed to check if {file_name} was expired: {err:?}")
+                        warn!("Failed to check if transfer (id: '{file_name}') expired: {err:?}");
                     }
                 }
             });
