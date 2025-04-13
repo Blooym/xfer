@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use flate2::{Compression, bufread::GzEncoder};
-use indicatif::{HumanBytes, ProgressBar};
+use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
 use std::{
     env, fs,
@@ -14,7 +14,7 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
-use time::{UtcDateTime, format_description};
+use time::{UtcDateTime, UtcOffset, format_description};
 use url::Url;
 
 /// Encrypt and create a transfer on a relay server.
@@ -69,7 +69,7 @@ impl ExecutableCommand for UploadCommand {
         } else if self.path.is_dir() {
             tar.append_dir_all(path_name, &path_canonical)?;
         } else {
-            bail!("could not determine is path was a file or directory");
+            bail!("could not determine if path was a file or directory");
         }
         let mut tar = tar.into_inner()?.into_inner().into_inner();
 
@@ -79,8 +79,10 @@ impl ExecutableCommand for UploadCommand {
         // Encrypt and validate the archive size with the server.
         prog_bar.set_message(format!("Creating transfer archive of '{}'", path_name));
         let api_client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
-        let server_config = api_client.get_server_config()?;
-        let bytes_human = HumanBytes(server_config.transfer.max_size_bytes);
+        let server_config = api_client
+            .get_server_config()
+            .context("failed to obtain server config, are you using the right server?")?;
+        let bytes_human = DecimalBytes(server_config.transfer.max_size_bytes);
         if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
                 "Transfer archive is larger than the server's maximum size of {}",
@@ -91,40 +93,44 @@ impl ExecutableCommand for UploadCommand {
         let decryption_key = Cryptography::encrypt_in_place(&mut tar)?;
         if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
-                "Transfer archive is larger than the server's maximum size of {} after encryption overhead",
+                "Encrypted transfer archive is larger than the server's maximum size of {}",
                 bytes_human
             )
         }
 
         // Upload the archive.
         prog_bar.set_message(format!(
-            "Uploading transfer archive to server ({})",
-            HumanBytes(tar.len() as u64)
+            "Uploading encrypted transfer archive to server ({})",
+            DecimalBytes(tar.len() as u64)
         ));
-        let transfer_response = api_client.create_transfer(tar)?;
+        let transfer_response = api_client
+            .create_transfer(tar)
+            .context("failed to upload encrypted transfer archive to server")?;
         prog_bar.finish_and_clear();
 
         println!(
-            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download {} -s '{}' -o <PATH>\n\nThis transfer will expire on {}",
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire {}",
             path_name,
-            env::current_exe()?
-                .file_name()
-                .context("current exe filename was None")?
-                .to_str()
-                .context("failed to convert exe filename to str")?,
+            env::current_exe()?.file_name().map_or_else(
+                || env!("CARGO_PKG_NAME"),
+                |s| s.to_str().expect("current exe name should be valid UTF-8"),
+            ),
             format_args!("{}/{}", transfer_response.id, decryption_key),
             self.server,
             UtcDateTime::from_unix_timestamp(
                 SystemTime::now()
-                    .duration_since(UNIX_EPOCH)?
+                    .duration_since(UNIX_EPOCH)
+                    .context("clock moved backwards")?
                     .add(Duration::from_millis(
                         server_config.transfer.expire_after_ms as u64,
                     ))
                     .as_secs() as i64
-            )?
-            .format(&format_description::parse(
-                "[day]-[month]-[year] at [hour]:[minute]:[second] UTC",
-            )?)?,
+            )
+            .context("expiry timestamp was out of range")?
+            .to_offset(UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC))
+            .format(&format_description::parse_borrowed::<2>(
+                "on [day]-[month]-[year] at [hour]:[minute]:[second] (UTC[offset_hour sign:mandatory]:[offset_minute])",
+            )?).unwrap_or(String::from("at an unknown time (server did not provide expiry data)")),
         );
 
         Ok(())
