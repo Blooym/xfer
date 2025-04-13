@@ -4,7 +4,7 @@ use std::{
     path::PathBuf,
     time::{Duration, SystemTime},
 };
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 #[derive(Debug)]
 pub struct StorageProvider {
@@ -34,9 +34,16 @@ impl StorageProvider {
                 let Ok(file_name) = file.file_name().into_string() else {
                     return;
                 };
-                if self.is_transfer_expired(&file_name).unwrap() {
-                    info!("removing expired transfer (id: '{}')", file_name);
-                    self.delete_transfer(&file_name).unwrap();
+                match self.is_transfer_expired(&file_name) {
+                    Ok(expired) => {
+                        if expired {
+                            info!("removing expired transfer (id: '{file_name}')");
+                            self.delete_transfer(&file_name).unwrap();
+                        }
+                    }
+                    Err(err) => {
+                        warn!("Failed to check if {file_name} was expired: {err:?}")
+                    }
                 }
             });
         Ok(())
