@@ -37,7 +37,7 @@ impl XferApiClient {
             .inner_client
             .get(self.base_url.join("configuration")?)
             .send()
-            .context("GET configuration from server request failed before response")?;
+            .context("server configuration request failed before response")?;
 
         if !res.status().is_success() {
             bail!(
@@ -55,7 +55,7 @@ impl XferApiClient {
             .post(self.base_url.join("transfer")?)
             .body(body)
             .send()
-            .context("create transfer upload request failed before response")?;
+            .context("create transfer request failed before response")?;
         if !res.status().is_success() {
             bail!(
                 "server returned status code {} from create transfer request. {}",
