@@ -1,5 +1,7 @@
 use crate::{
-    ExecutableCommand, api_client::XferApiClient, commands::PROGRESS_BAR_TICKRATE,
+    ExecutableCommand,
+    api_client::XferApiClient,
+    commands::{DEFAULT_SERVER_URL, PROGRESS_BAR_TICKRATE},
     cryptography::Cryptography,
 };
 use anyhow::{Context, bail};
@@ -38,7 +40,7 @@ pub struct DownloadCommand {
         short = 's',
         env = "XFER_CLIENT_RELAY_SERVER",
         long = "server",
-        default_value = "https://xfer.blooym.dev"
+        default_value = DEFAULT_SERVER_URL
     )]
     server: Url,
 }

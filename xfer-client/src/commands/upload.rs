@@ -1,5 +1,7 @@
 use crate::{
-    ExecutableCommand, api_client::XferApiClient, commands::PROGRESS_BAR_TICKRATE,
+    ExecutableCommand,
+    api_client::XferApiClient,
+    commands::{DEFAULT_SERVER_URL, PROGRESS_BAR_TICKRATE},
     cryptography::Cryptography,
 };
 use anyhow::{Context, Result, bail};
@@ -34,7 +36,7 @@ pub struct UploadCommand {
         short = 's',
         env = "XFER_CLIENT_RELAY_SERVER",
         long = "server",
-        default_value = "https://xfer.blooym.dev"
+        default_value = DEFAULT_SERVER_URL
     )]
     server: Url,
 }
@@ -114,14 +116,17 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.finish_and_clear();
 
         println!(
-            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}' -s '{}' -o <PATH>\n\nThis transfer will expire {}",
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}'{} -o <PATH>\n\nThis transfer will expire {}",
             path_name,
             env::current_exe()?.file_name().map_or_else(
                 || env!("CARGO_PKG_NAME"),
                 |s| s.to_str().expect("current exe name should be valid UTF-8"),
             ),
             format_args!("{}/{}", transfer_response.id, decryption_key),
-            self.server,
+            match self.server.as_str() == DEFAULT_SERVER_URL {
+                true => String::new(),
+                false => format!(" -s {}", self.server),
+            },
             UtcDateTime::from_unix_timestamp(
                 SystemTime::now()
                     .duration_since(UNIX_EPOCH)
