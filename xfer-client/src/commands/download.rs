@@ -34,7 +34,12 @@ pub struct DownloadCommand {
     directory: PathBuf,
 
     /// URL (including scheme) of the server to download the transfer from.
-    #[clap(short = 's', env = "XFER_CLIENT_RELAY_SERVER", long = "server")]
+    #[clap(
+        short = 's',
+        env = "XFER_CLIENT_RELAY_SERVER",
+        long = "server",
+        default_value = "https://xfer.blooym.dev"
+    )]
     server: Url,
 }
 

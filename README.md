@@ -27,7 +27,9 @@ cargo install --git https://github.com/Blooym/xfer.git xfer
 
 ## Usage
 
-These examples will assume there is an xfer server at `https://example.com`. Please replace this with the url of the xfer server you actually want to use. For more in-depth information about flags and usage refer to the `xfer help` command.
+These examples will assume you're using the default xfer server. Use the `--server <URL>` flag when uploading or downloading to use a custom server.
+
+*For more in-depth information about commands and flags, refer to the `xfer help` command.*
 
 ### Transfer a file
 
@@ -55,4 +57,10 @@ When downloading a transfer files will be placed in the output directory, and fo
 
 ***Note:*** *Although xfer encrypts data client-side, you should still have some trust in the server you use to faciliate your transfer.*
 
-There are currently no public xfer servers. You can run your own by reading the [xfer server documentation](./xfer-server//README.md).
+Available servers can change at any time. If the default xfer server is shut down a client update will be pushed to remove it from being used as the default.
+
+| URL                       | Notes                                                                                                                                                       | Operator                             |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `https://xfer.blooym.dev` | Instance has a very limited max upload size, low transfer retention length and ratelimits on how many transfers can be uploaded/download in a set duration. | [@Blooym](https://github.com/Blooym) |
+
+Want to host your own? Learn more about running an xfer server by reading the [xfer server documentation](./xfer-server//README.md).
