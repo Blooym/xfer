@@ -30,7 +30,12 @@ pub struct UploadCommand {
     no_confirm: bool,
 
     /// URL (including scheme) of the server create the transfer on.
-    #[clap(short = 's', env = "XFER_CLIENT_RELAY_SERVER", long = "server")]
+    #[clap(
+        short = 's',
+        env = "XFER_CLIENT_RELAY_SERVER",
+        long = "server",
+        default_value = "https://xfer.blooym.dev"
+    )]
     server: Url,
 }
 
