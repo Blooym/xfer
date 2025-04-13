@@ -57,10 +57,10 @@ When downloading a transfer files will be placed in the output directory, and fo
 
 ***Note:*** *Although xfer encrypts data client-side, you should still have some trust in the server you use to faciliate your transfer.*
 
-Available servers can change at any time. If the default xfer server is shut down a client update will be pushed to remove it from being used as the default.
+Available servers can change at any time. (If the default xfer server is shut down a client update will be pushed to remove it as the default).
 
-| URL                       | Notes                                                                                                                                                       | Operator                             |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `https://xfer.blooym.dev` | Instance has a very limited max upload size, low transfer retention length and ratelimits on how many transfers can be uploaded/download in a set duration. | [@Blooym](https://github.com/Blooym) |
+| Server            | Notes                                                                                                                                                       | Operator                             |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `xfer.blooym.dev` | Instance has a very limited max upload size, low transfer retention length and ratelimits on how many transfers can be uploaded/download in a set duration. | [@Blooym](https://github.com/Blooym) |
 
 Want to host your own? Learn more about running an xfer server by reading the [xfer server documentation](./xfer-server//README.md).
