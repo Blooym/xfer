@@ -89,9 +89,9 @@ impl ExecutableCommand for DownloadCommand {
 
         // Download & decrypt the archive and unpack it on disk.
         let mut decrypted_archive = {
-            let res = api_client.download_transfer(transfer_id)?;
+            let res = api_client.download_transfer(transfer_id)?.bytes()?;
             prog_bar.set_message("Decrypting transfer archive");
-            let archive = Cryptography::decrypt(&res.bytes()?, decryption_key).context(
+            let archive = Cryptography::decrypt(&res, decryption_key).context(
                 "failed to decrypt transfer archive - ensure you entered the transfer key correctly",
             )?;
             Archive::new(Cursor::new(archive))
