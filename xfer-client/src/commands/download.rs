@@ -4,7 +4,7 @@ use crate::{
 };
 use anyhow::{Context, bail};
 use clap::Parser;
-use indicatif::{HumanBytes, ProgressBar};
+use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
 use std::{fs, io::Cursor, path::PathBuf};
 use tar::Archive;
@@ -52,15 +52,17 @@ impl ExecutableCommand for DownloadCommand {
         let (transfer_id, decryption_key) = self
             .transfer_key
             .split_once("/")
-            .context("malformed transfer key")?;
+            .context("invalid transfer key - please ensure you have entered it correctly")?;
 
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
         let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
         let human_transfer_size = {
-            let res = api_client.transfer_metadata(transfer_id)?;
-            HumanBytes(
+            let res = api_client.transfer_metadata(transfer_id).context(
+                "failed to obtain transfer data - ensure you entered the transfer key server url correctly"
+            )?;
+            DecimalBytes(
                 res.headers()
                     .get("Content-Length")
                     .map(|f| f.to_str().unwrap())
@@ -81,7 +83,8 @@ impl ExecutableCommand for DownloadCommand {
             return Ok(());
         }
 
-        let prog_bar = ProgressBar::new_spinner().with_message("Downloading transfer archive");
+        let prog_bar =
+            ProgressBar::new_spinner().with_message("Downloading encrypted transfer archive");
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Download & decrypt the archive and unpack it on disk.
@@ -89,7 +92,7 @@ impl ExecutableCommand for DownloadCommand {
             let res = api_client.download_transfer(transfer_id)?;
             prog_bar.set_message("Decrypting transfer archive");
             let archive = Cryptography::decrypt(&res.bytes()?, decryption_key).context(
-                "failed to decrypt transfer archive, please double check your transfer key is correct.",
+                "failed to decrypt transfer archive - ensure you entered the transfer key correctly",
             )?;
             Archive::new(Cursor::new(archive))
         };
@@ -97,7 +100,7 @@ impl ExecutableCommand for DownloadCommand {
         fs::create_dir_all(&self.directory)?;
         decrypted_archive
             .unpack(self.directory.canonicalize()?)
-            .context("failed to unpack decrypted transfer archive contents")?;
+            .context("failed to unpack decrypted transfer archive contents - archive file may be malformed")?;
         prog_bar.finish_and_clear();
 
         println!(
