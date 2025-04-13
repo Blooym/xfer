@@ -35,7 +35,7 @@ impl StorageProvider {
                     return;
                 };
                 if self.is_transfer_expired(&file_name).unwrap() {
-                    info!("'{}' has expired - deleting from storage.", file_name);
+                    info!("removing expired transfer (id: '{}')", file_name);
                     self.delete_transfer(&file_name).unwrap();
                 }
             });
