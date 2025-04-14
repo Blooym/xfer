@@ -11,9 +11,9 @@ Transfer files and folders between devices via the internet with end-to-end encr
 
 ## Features
 
-- End-to-end encrypted and sent via relay server.
-- Supports uploading files and folders with full metadata retention.
-- Efficient compression for faster transfers.
+- Transfers are end-to-end encrypted and sent via relay server.
+- Upload files or folders with full metadata retention.
+- Efficient compression of content for faster transfers.
 
 ## Installation
 
