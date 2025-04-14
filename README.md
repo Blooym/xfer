@@ -1,7 +1,7 @@
 # xfer
 
 > [!IMPORTANT]  
-> **This project is makes no stability or security guarentees.**
+> **This project makes no stability or security guarentees.**
 >
 > It is likely not to the optimal solution for your problem; Consider using [croc](https://github.com/schollz/croc/) instead.
 
