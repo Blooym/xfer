@@ -5,7 +5,7 @@
 >
 > It is likely not to the optimal solution for your problem; Consider using [croc](https://github.com/schollz/croc/) instead.
 
-Securely transfer files across the internet with end-to-end encryption.
+Transfer files and folders between devices via the internet with end-to-end encryption.
 
 *You are viewing the documentation for the xfer client, xfer server documentation can be found [here](./xfer-server/README.md).*
 
@@ -57,9 +57,9 @@ When downloading a transfer files will be placed in the output directory, and fo
 
 *Available servers will change with time; If the default server is shut down an update will be pushed to remove it as the default.*
 
-| Server            | Notes                                                                                                                        | Operator                             |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `xfer.blooym.dev` | Very limited max upload size, low transfer retention time and ratelimits on how many transfers can be made in a time period. | [@Blooym](https://github.com/Blooym) |
+| Server            | Notes                                                                                                                  | Country | Operator                           |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
+| `xfer.blooym.dev` | Very limited max upload size, low transfer retention time and ratelimits on how many transfers can be made in a time period. | Germany | [@Blooym](https://github.com/Blooym) |
 
 
 Want to host your own? Learn more about running an xfer server by reading the [xfer server documentation](./xfer-server//README.md).
