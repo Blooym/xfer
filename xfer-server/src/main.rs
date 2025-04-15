@@ -16,7 +16,7 @@ use clap_duration::duration_range_value_parse;
 use dotenvy::dotenv;
 use duration_human::{DurationHuman, DurationHumanValidator};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc, time::Duration};
-use storage::StorageProvider;
+use storage::TransferStorage;
 use tokio::{net::TcpListener, signal};
 use tower_http::{
     catch_panic::CatchPanicLayer,
@@ -64,7 +64,7 @@ struct Arguments {
 
 #[derive(Clone)]
 struct AppState {
-    storage_provider: Arc<StorageProvider>,
+    transfer_storage: Arc<TransferStorage>,
     transfer_expire_after: Duration,
     transfer_max_size: ByteSize,
 }
@@ -77,7 +77,7 @@ async fn main() -> Result<()> {
         .init();
     let args = Arguments::parse();
 
-    let storage = Arc::new(StorageProvider::new(
+    let storage = Arc::new(TransferStorage::new(
         args.data_directory.join("transfers"),
         Duration::from(&args.transfer_expire_after),
     )?);
@@ -112,7 +112,7 @@ async fn main() -> Result<()> {
             },
         ))
         .with_state(AppState {
-            storage_provider: Arc::clone(&storage),
+            transfer_storage: Arc::clone(&storage),
             transfer_expire_after: Duration::from(&args.transfer_expire_after),
             transfer_max_size: args.transfer_max_size,
         });
