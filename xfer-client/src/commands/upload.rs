@@ -82,7 +82,7 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Encrypt and validate the archive size with the server.
-        prog_bar.set_message(format!("Creating transfer archive of '{}'", path_name));
+        prog_bar.set_message(format!("Validating '{}'", path_name));
         let api_client = XferApiClient::new(self.server.clone());
         let server_config = api_client
             .get_server_config()
