@@ -62,7 +62,7 @@ impl ExecutableCommand for DownloadCommand {
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
-        let api_client = XferApiClient::new(self.server, reqwest::blocking::Client::new());
+        let api_client = XferApiClient::new(self.server);
         let human_transfer_size = {
             let res = api_client.transfer_metadata(transfer_id).context(
                 "failed to get transfer - transfer may have expired, transfer key may be incorrect, or server may have returned an error"

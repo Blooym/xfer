@@ -83,7 +83,7 @@ impl ExecutableCommand for UploadCommand {
 
         // Encrypt and validate the archive size with the server.
         prog_bar.set_message(format!("Creating transfer archive of '{}'", path_name));
-        let api_client = XferApiClient::new(self.server.clone(), reqwest::blocking::Client::new());
+        let api_client = XferApiClient::new(self.server.clone());
         let server_config = api_client
             .get_server_config()
             .context("failed to obtain server config, are you using the right server?")?;

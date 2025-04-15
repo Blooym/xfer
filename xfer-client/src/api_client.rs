@@ -26,10 +26,17 @@ pub struct XferApiClient {
 }
 
 impl XferApiClient {
-    pub fn new(base_url: Url, client: reqwest::blocking::Client) -> Self {
+    pub fn new(base_url: Url) -> Self {
         Self {
             base_url,
-            inner_client: client,
+            inner_client: reqwest::blocking::Client::builder()
+                .user_agent(concat!(
+                    env!("CARGO_PKG_NAME"),
+                    "/",
+                    env!("CARGO_PKG_VERSION")
+                ))
+                .build()
+                .expect("api inner client should build"),
         }
     }
 
@@ -55,7 +62,7 @@ impl XferApiClient {
             .inner_client
             .post(self.base_url.join("transfer")?)
             .body(body)
-            .timeout(Duration::from_secs(24 * 60 * 60)) // 24 hours.
+            .timeout(Duration::MAX)
             .send()
             .context("create transfer request failed before response")?;
         if !res.status().is_success() {
@@ -72,7 +79,7 @@ impl XferApiClient {
         let res = self
             .inner_client
             .get(self.base_url.join(&format!("transfer/{id}"))?)
-            .timeout(Duration::from_secs(24 * 60 * 60)) // 24 hours.
+            .timeout(Duration::MAX)
             .send()
             .context("download transfer request failed before response")?;
         if !res.status().is_success() {
