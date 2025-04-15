@@ -70,7 +70,10 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Compress into an archive.
-        prog_bar.set_message(format!("Creating transfer archive for '{}'", path_name));
+        prog_bar.set_message(format!(
+            "Creating transfer archive for '{}'",
+            path_canonical.display()
+        ));
         let mut tar =
             tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
         if self.path.is_file() {
@@ -80,7 +83,7 @@ impl ExecutableCommand for UploadCommand {
             tar.append_dir_all(path_name, &path_canonical)
                 .context("failed to append directory recursively to transfer archive")?;
         } else {
-            bail!("could not determine if path was a file or directory");
+            bail!("could not determine if {path_canonical:?} is a file or directory");
         }
         let mut tar = tar
             .into_inner()
