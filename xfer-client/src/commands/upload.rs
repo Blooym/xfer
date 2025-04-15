@@ -100,16 +100,18 @@ impl ExecutableCommand for UploadCommand {
         let bytes_human = DecimalBytes(server_config.transfer.max_size_bytes);
         if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
-                "Transfer archive is larger than the server's maximum size of {}",
-                bytes_human
+                "Transfer archive is larger than the server's maximum size of {} (was {})",
+                bytes_human,
+                DecimalBytes(tar.len() as u64)
             )
         }
         prog_bar.set_message("Encrypting transfer archive");
         let decryption_key = Cryptography::encrypt_in_place(&mut tar)?;
         if tar.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
-                "Encrypted transfer archive is larger than the server's maximum size of {}",
-                bytes_human
+                "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
+                bytes_human,
+                DecimalBytes(tar.len() as u64)
             )
         }
 
