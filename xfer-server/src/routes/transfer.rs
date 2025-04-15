@@ -68,6 +68,7 @@ pub async fn download_transfer_handler(
 
     Response::builder()
         .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "application/octet-stream")
         .header(
             header::CACHE_CONTROL,
             format!(
