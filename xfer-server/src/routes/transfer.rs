@@ -3,11 +3,15 @@ use axum::{
     Json,
     body::{self, Body},
     extract::{Path, State},
-    http::{StatusCode, header::CONTENT_LENGTH},
+    http::{
+        Response, StatusCode,
+        header::{self},
+    },
     response::IntoResponse,
 };
 use rand::seq::IndexedRandom;
 use serde::Serialize;
+use std::time::SystemTime;
 use tracing::warn;
 
 #[derive(Serialize)]
@@ -61,7 +65,26 @@ pub async fn download_transfer_handler(
     if !state.storage_provider.transfer_exists(&id).unwrap() {
         return StatusCode::NOT_FOUND.into_response();
     }
-    Body::from(state.storage_provider.get_transfer(&id).unwrap()).into_response()
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(
+            header::CACHE_CONTROL,
+            format!(
+                "public, max-age={}, must-revalidate",
+                state
+                    .storage_provider
+                    .get_transfer_expiry(&id)
+                    .unwrap()
+                    .duration_since(SystemTime::now())
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            ),
+        )
+        .body(Body::from(
+            state.storage_provider.get_transfer(&id).unwrap(),
+        ))
+        .unwrap()
 }
 
 pub async fn transfer_metadata_handler(
@@ -71,9 +94,26 @@ pub async fn transfer_metadata_handler(
     if !state.storage_provider.transfer_exists(&id).unwrap() {
         return StatusCode::NOT_FOUND.into_response();
     }
-    [(
-        CONTENT_LENGTH,
-        state.storage_provider.get_transfer(&id).unwrap().len(),
-    )]
-    .into_response()
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(
+            header::CACHE_CONTROL,
+            format!(
+                "public, max-age={}, must-revalidate",
+                state
+                    .storage_provider
+                    .get_transfer_expiry(&id)
+                    .unwrap()
+                    .duration_since(SystemTime::now())
+                    .map(|d| d.as_secs())
+                    .unwrap_or(0)
+            ),
+        )
+        .header(
+            header::CONTENT_LENGTH,
+            state.storage_provider.get_transfer(&id).unwrap().len(),
+        )
+        .body(Body::empty())
+        .unwrap()
 }
