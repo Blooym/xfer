@@ -66,29 +66,30 @@ impl ExecutableCommand for UploadCommand {
             return Ok(());
         }
 
+        let prog_bar = ProgressBar::new_spinner();
+        prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
+
         // Compress into an archive.
+        prog_bar.set_message(format!("Creating transfer archive for '{}'", path_name));
         let mut tar =
             tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
         if self.path.is_file() {
             tar.append_path_with_name(&path_canonical, path_name)
-                .context("failed to append file to archive")?;
+                .context("failed to append file to transfer archive")?;
         } else if self.path.is_dir() {
             tar.append_dir_all(path_name, &path_canonical)
-                .context("failed to append directory recursively to archive")?;
+                .context("failed to append directory recursively to transfer archive")?;
         } else {
             bail!("could not determine if path was a file or directory");
         }
         let mut tar = tar
             .into_inner()
-            .context("failed to create archive")?
+            .context("failed to create transfer archive")?
             .into_inner()
             .into_inner();
 
-        let prog_bar = ProgressBar::new_spinner();
-        prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
-
         // Encrypt and validate the archive size with the server.
-        prog_bar.set_message(format!("Validating '{}'", path_name));
+        prog_bar.set_message("Validating transfer archive");
         let api_client = XferApiClient::new(self.server.clone());
         let server_config = api_client
             .get_server_config()
