@@ -1,4 +1,4 @@
-use crate::AppState;
+use crate::{AppState, storage::TransferStorage};
 use axum::{
     Json,
     body::{self, Body},
@@ -9,7 +9,6 @@ use axum::{
     },
     response::IntoResponse,
 };
-use rand::seq::IndexedRandom;
 use serde::Serialize;
 use std::time::SystemTime;
 use tracing::warn;
@@ -38,23 +37,7 @@ pub async fn create_transfer_handler(
         ));
     }
 
-    // Generate a unique passphrase for the transfer.
-    let id = loop {
-        let id = eff_wordlist::large::LIST
-            .choose_multiple(&mut rand::rng(), 3)
-            .map(|word| word.1)
-            .collect::<Vec<_>>()
-            .join("-");
-        if !state.storage_provider.transfer_exists(&id).unwrap() {
-            break id;
-        }
-    };
-
-    state
-        .storage_provider
-        .save_transfer(&id, &body_bytes)
-        .unwrap();
-
+    let id = state.transfer_storage.create_transfer(&body_bytes).unwrap();
     Ok((StatusCode::CREATED, Json(CreateTransferResponse { id })))
 }
 
@@ -62,7 +45,15 @@ pub async fn download_transfer_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    if !state.storage_provider.transfer_exists(&id).unwrap() {
+    if !TransferStorage::validate_identifier(&id) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "transfer identifier failed to validate server-side",
+        )
+            .into_response();
+    };
+
+    if !state.transfer_storage.transfer_exists(&id).unwrap() {
         return StatusCode::NOT_FOUND.into_response();
     }
 
@@ -74,7 +65,7 @@ pub async fn download_transfer_handler(
             format!(
                 "max-age={}, must-revalidate",
                 state
-                    .storage_provider
+                    .transfer_storage
                     .get_transfer_expiry(&id)
                     .unwrap()
                     .duration_since(SystemTime::now())
@@ -83,7 +74,7 @@ pub async fn download_transfer_handler(
             ),
         )
         .body(Body::from(
-            state.storage_provider.get_transfer(&id).unwrap(),
+            state.transfer_storage.get_transfer(&id).unwrap(),
         ))
         .unwrap()
 }
@@ -92,7 +83,15 @@ pub async fn transfer_metadata_handler(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> impl IntoResponse {
-    if !state.storage_provider.transfer_exists(&id).unwrap() {
+    if !TransferStorage::validate_identifier(&id) {
+        return (
+            StatusCode::BAD_REQUEST,
+            "transfer identifier failed to validate server-side",
+        )
+            .into_response();
+    };
+
+    if !state.transfer_storage.transfer_exists(&id).unwrap() {
         return StatusCode::NOT_FOUND.into_response();
     }
 
@@ -103,7 +102,7 @@ pub async fn transfer_metadata_handler(
             format!(
                 "max-age={}, must-revalidate",
                 state
-                    .storage_provider
+                    .transfer_storage
                     .get_transfer_expiry(&id)
                     .unwrap()
                     .duration_since(SystemTime::now())
@@ -113,7 +112,7 @@ pub async fn transfer_metadata_handler(
         )
         .header(
             header::CONTENT_LENGTH,
-            state.storage_provider.get_transfer(&id).unwrap().len(),
+            state.transfer_storage.get_transfer(&id).unwrap().len(),
         )
         .body(Body::empty())
         .unwrap()
