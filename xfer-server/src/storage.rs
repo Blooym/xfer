@@ -22,19 +22,7 @@ impl StorageProvider {
     }
 
     fn is_transfer_expired(&self, id: &str) -> Result<bool> {
-        let metadata = fs::metadata(self.base_dir.join(id))?;
-        // btime isn't available on all targets/environments (e.g some containers)
-        // if this happens we just fallback to mtime which is usually available.
-        let write_date = match metadata.created() {
-            Ok(ctime) => ctime,
-            Err(err) => {
-                trace!("unable to get btime for {id} - using mtime: {err}");
-                metadata
-                    .modified()
-                    .context("unable to obtain btime or mtime for file")?
-            }
-        };
-        Ok(write_date + self.expire_after <= SystemTime::now())
+        Ok(self.get_transfer_expiry(id)? <= SystemTime::now())
     }
 
     pub fn remove_expired_transfers(&self) -> Result<()> {
@@ -58,6 +46,22 @@ impl StorageProvider {
                 }
             });
         Ok(())
+    }
+
+    pub fn get_transfer_expiry(&self, id: &str) -> Result<SystemTime> {
+        let metadata = fs::metadata(self.base_dir.join(id))?;
+        // btime isn't available on all targets/environments (e.g some containers)
+        // if this happens we just fallback to mtime which is usually available.
+        let write_date = match metadata.created() {
+            Ok(ctime) => ctime,
+            Err(err) => {
+                trace!("unable to get btime for {id} - using mtime: {err}");
+                metadata
+                    .modified()
+                    .context("unable to obtain btime or mtime for file")?
+            }
+        };
+        Ok(write_date + self.expire_after)
     }
 
     pub fn get_transfer(&self, id: &str) -> Result<Vec<u8>> {
