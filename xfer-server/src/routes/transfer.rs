@@ -72,7 +72,7 @@ pub async fn download_transfer_handler(
         .header(
             header::CACHE_CONTROL,
             format!(
-                "public, max-age={}, must-revalidate",
+                "max-age={}, must-revalidate",
                 state
                     .storage_provider
                     .get_transfer_expiry(&id)
@@ -101,7 +101,7 @@ pub async fn transfer_metadata_handler(
         .header(
             header::CACHE_CONTROL,
             format!(
-                "public, max-age={}, must-revalidate",
+                "max-age={}, must-revalidate",
                 state
                     .storage_provider
                     .get_transfer_expiry(&id)
