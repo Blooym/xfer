@@ -62,7 +62,7 @@ impl XferApiClient {
             .inner_client
             .post(self.base_url.join("transfer")?)
             .body(body)
-            .timeout(Duration::MAX)
+            .timeout(Duration::from_secs(48 * 60 * 60)) // 48 hours.
             .send()
             .context("create transfer request failed before response")?;
         if !res.status().is_success() {
@@ -79,7 +79,7 @@ impl XferApiClient {
         let res = self
             .inner_client
             .get(self.base_url.join(&format!("transfer/{id}"))?)
-            .timeout(Duration::MAX)
+            .timeout(Duration::from_secs(48 * 60 * 60)) // 48 hours.
             .send()
             .context("download transfer request failed before response")?;
         if !res.status().is_success() {
