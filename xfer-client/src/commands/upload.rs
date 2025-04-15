@@ -70,13 +70,19 @@ impl ExecutableCommand for UploadCommand {
         let mut tar =
             tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
         if self.path.is_file() {
-            tar.append_path_with_name(&path_canonical, path_name)?;
+            tar.append_path_with_name(&path_canonical, path_name)
+                .context("failed to append file to archive")?;
         } else if self.path.is_dir() {
-            tar.append_dir_all(path_name, &path_canonical)?;
+            tar.append_dir_all(path_name, &path_canonical)
+                .context("failed to append directory recursively to archive")?;
         } else {
             bail!("could not determine if path was a file or directory");
         }
-        let mut tar = tar.into_inner()?.into_inner().into_inner();
+        let mut tar = tar
+            .into_inner()
+            .context("failed to create archive")?
+            .into_inner()
+            .into_inner();
 
         let prog_bar = ProgressBar::new_spinner();
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
