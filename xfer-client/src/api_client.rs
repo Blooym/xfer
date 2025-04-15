@@ -1,5 +1,5 @@
 use anyhow::{Context, Result, bail};
-use reqwest::blocking::Response;
+use reqwest::{blocking::Response, header};
 use serde::Deserialize;
 use std::time::Duration;
 use url::Url;
@@ -61,6 +61,7 @@ impl XferApiClient {
         let res = self
             .inner_client
             .post(self.base_url.join("transfer")?)
+            .header(header::CONTENT_TYPE, "application/octet-stream")
             .body(body)
             .timeout(Duration::from_secs(48 * 60 * 60)) // 48 hours.
             .send()
