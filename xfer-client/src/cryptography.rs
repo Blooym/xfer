@@ -116,7 +116,7 @@ impl<'a> EncryptedBlob<'a> {
         Ok(())
     }
 
-    pub fn decrypt(&self, key: &[u8]) -> Result<Vec<u8>> {
+    pub fn decrypt(&self, key: &[u8; ARGON2ID_KEY_LEN]) -> Result<Vec<u8>> {
         let cipher = CryptoImpl::new(key.into());
         cipher
             .decrypt(CryptoNonce::from_slice(self.nonce), self.ciphertext)
