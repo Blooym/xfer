@@ -31,7 +31,7 @@ pub struct DownloadCommand {
     ///
     /// File transfers will be placed in this directory.
     /// Directory transfer will have their folder placed in this directory.
-    #[clap(short = 'o', env = "XFER_CLIENT_DOWNLOAD_DIRECTORY", long = "output", value_hint = ValueHint::AnyPath)]
+    #[clap(short = 'o', env = "XFER_CLIENT_DOWNLOAD_DIRECTORY", long = "output", value_hint = ValueHint::DirPath)]
     directory: PathBuf,
 
     /// URL (including scheme) of the server to download the transfer from.
