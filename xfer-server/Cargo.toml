@@ -10,10 +10,10 @@ edition = "2024"
 unsafe_code = "forbid"
 
 [dependencies]
-anyhow = { version = "1.0.97", features = ["backtrace"] }
+anyhow = { version = "1.0.98", features = ["backtrace"] }
 axum = { version = "0.8.3", features = ["http2"] }
 bytesize = "2.0.1"
-clap = { version = "4.5.35", features = ["derive", "string", "env"] }
+clap = { version = "4.5.36", features = ["derive", "string", "env"] }
 clap-duration = "0.1.11"
 dirs = "6.0.0"
 dotenvy = "0.15.7"
