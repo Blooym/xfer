@@ -2,11 +2,10 @@ mod api_client;
 mod commands;
 mod cryptography;
 
-use std::time::Duration;
-
 use anyhow::Result;
 use clap::Parser;
-use commands::{DownloadCommand, UploadCommand};
+use commands::{DownloadCommand, GenCompletionsCommand, UploadCommand};
+use std::time::Duration;
 
 // Compile-time options
 pub const DEFAULT_SERVER_URL: &str = "https://xfer.blooym.dev/"; // Must end with trailing slash.
@@ -19,6 +18,7 @@ pub trait ExecutableCommand: Parser {
 
 #[derive(Parser)]
 enum Command {
+    GenCompletions(GenCompletionsCommand),
     Upload(UploadCommand),
     Download(DownloadCommand),
 }
@@ -33,6 +33,7 @@ struct RootCommand {
 impl ExecutableCommand for RootCommand {
     fn run(self) -> Result<()> {
         match self.command {
+            Command::GenCompletions(cmd) => cmd.run(),
             Command::Upload(cmd) => cmd.run(),
             Command::Download(cmd) => cmd.run(),
         }
