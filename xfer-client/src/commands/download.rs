@@ -3,7 +3,7 @@ use crate::{
     cryptography::Cryptography,
 };
 use anyhow::{Context, bail};
-use clap::Parser;
+use clap::{Parser, ValueHint};
 use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
 use std::{fs, io::Cursor, path::PathBuf};
@@ -20,6 +20,7 @@ pub struct DownloadCommand {
     ///  - The first part is the key required to fetch the transfer.
     ///
     ///  - The second part is the key requried to decrypt the transfer.
+    #[clap(value_hint = ValueHint::Other)]
     transfer_key: String,
 
     /// Skip all confirmation dialogues.
@@ -30,7 +31,7 @@ pub struct DownloadCommand {
     ///
     /// File transfers will be placed in this directory.
     /// Directory transfer will have their folder placed in this directory.
-    #[clap(short = 'o', env = "XFER_CLIENT_DOWNLOAD_DIRECTORY", long = "output")]
+    #[clap(short = 'o', env = "XFER_CLIENT_DOWNLOAD_DIRECTORY", long = "output", value_hint = ValueHint::AnyPath)]
     directory: PathBuf,
 
     /// URL (including scheme) of the server to download the transfer from.
@@ -38,7 +39,8 @@ pub struct DownloadCommand {
         short = 's',
         env = "XFER_CLIENT_RELAY_SERVER",
         long = "server",
-        default_value = DEFAULT_SERVER_URL
+        default_value = DEFAULT_SERVER_URL,
+        value_hint = ValueHint::Url
     )]
     server: Url,
 }

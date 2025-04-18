@@ -3,7 +3,7 @@ use crate::{
     cryptography::Cryptography,
 };
 use anyhow::{Context, Result, bail};
-use clap::Parser;
+use clap::{Parser, ValueHint};
 use flate2::{Compression, bufread::GzEncoder};
 use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
@@ -23,6 +23,7 @@ pub struct UploadCommand {
     /// File or directory to transfer.
     ///
     /// When a directory is specified, all subdirectories will also be included.
+    #[clap(value_hint = ValueHint::AnyPath)]
     path: PathBuf,
 
     /// Skip all confirmation dialogues.
@@ -34,7 +35,8 @@ pub struct UploadCommand {
         short = 's',
         env = "XFER_CLIENT_RELAY_SERVER",
         long = "server",
-        default_value = DEFAULT_SERVER_URL
+        default_value = DEFAULT_SERVER_URL,
+        value_hint = ValueHint::Url,
     )]
     server: Url,
 }
