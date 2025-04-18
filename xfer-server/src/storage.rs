@@ -7,7 +7,7 @@ use std::{
 };
 use tracing::{debug, info, trace, warn};
 
-const TRANSFER_IDENTIFIER_WORDS: usize = 3;
+const TRANSFER_IDENTIFIER_WORDS: usize = 4;
 const TRANSFER_IDENTIFIER_WORD_SEPARATOR: &str = "-";
 
 #[derive(Debug)]
