@@ -104,11 +104,10 @@ impl ExecutableCommand for UploadCommand {
             .get_server_config()
             .await
             .context("failed to obtain server config, are you using the right server?")?;
-        let bytes_human = DecimalBytes(server_config.transfer.max_size_bytes);
         if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Transfer archive is larger than the server's maximum size of {} (was {})",
-                bytes_human,
+                DecimalBytes(server_config.transfer.max_size_bytes),
                 DecimalBytes(archive_size)
             )
         }
@@ -124,7 +123,7 @@ impl ExecutableCommand for UploadCommand {
         if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
-                bytes_human,
+                DecimalBytes(server_config.transfer.max_size_bytes),
                 DecimalBytes(archive_size)
             )
         }
