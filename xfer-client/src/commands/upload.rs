@@ -108,12 +108,10 @@ impl ExecutableCommand for UploadCommand {
 
         // Encrypt transfer archive.
         prog_bar.set_message("Encrypting transfer archive");
-        let mut enc_archive = tempfile()?;
-        let decryption_key = Cryptography::encrypt(&mut archive_file, &mut enc_archive)?;
-        drop(archive_file);
+        let decryption_key = Cryptography::encrypt(&mut archive_file)?;
 
         // Validate the encrypted archive size with the server.
-        let archive_size = enc_archive.metadata()?.len();
+        let archive_size = archive_file.metadata()?.len();
         if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
@@ -128,7 +126,7 @@ impl ExecutableCommand for UploadCommand {
             DecimalBytes(archive_size)
         ));
         let transfer_response = api_client
-            .create_transfer(tokio::fs::File::from_std(enc_archive))
+            .create_transfer(tokio::fs::File::from_std(archive_file))
             .await
             .context("failed to upload encrypted transfer archive to server")?;
         prog_bar.finish_and_clear();

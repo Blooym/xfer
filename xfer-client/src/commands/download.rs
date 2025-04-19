@@ -105,22 +105,20 @@ impl ExecutableCommand for DownloadCommand {
 
         // Download & decrypt the archive and unpack it on disk.
         let mut archive = {
-            let mut enc_archive = tempfile()?;
+            let mut archive_file = tempfile()?;
             api_client
                 .download_transfer(
                     transfer_id,
-                    &mut tokio::fs::File::from_std(enc_archive.try_clone()?),
+                    &mut tokio::fs::File::from_std(archive_file.try_clone()?),
                     |prog| prog_bar.set_position(prog),
                 )
                 .await?;
             prog_bar.finish_and_clear();
             let prog_bar = ProgressBar::new_spinner();
             prog_bar.set_message("Decrypting transfer archive");
-            let mut archive_file = tempfile()?;
-            Cryptography::decrypt(decryption_key, &mut enc_archive, &mut archive_file).context(
+            Cryptography::decrypt(decryption_key, &mut archive_file).context(
                 "failed to decrypt transfer archive - ensure you entered the transfer key correctly",
             )?;
-            drop(enc_archive);
             Archive::new(archive_file)
         };
         let prog_bar = ProgressBar::new_spinner();
