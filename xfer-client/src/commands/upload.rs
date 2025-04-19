@@ -71,7 +71,8 @@ impl ExecutableCommand for UploadCommand {
             return Ok(());
         }
 
-        let temp_directory = tempfile::tempdir()?;
+        let temp_directory =
+            tempfile::TempDir::with_prefix(format!("{}-", env!("CARGO_PKG_NAME")))?;
         let prog_bar = ProgressBar::new_spinner();
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 

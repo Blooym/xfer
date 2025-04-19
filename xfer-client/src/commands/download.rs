@@ -107,7 +107,7 @@ impl ExecutableCommand for DownloadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Download & decrypt the archive and unpack it on disk.
-        let temp_directory = tempfile::tempdir()?;
+        let temp_directory = tempfile::TempDir::with_prefix(env!("CARGO_PKG_NAME"))?;
         let mut archive = {
             let enc_archive_path = temp_directory.path().join(TEMP_ENC_ARCHIVE_FILENAME);
             api_client
