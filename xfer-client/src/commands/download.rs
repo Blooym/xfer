@@ -7,10 +7,11 @@ use clap::{Parser, ValueHint};
 use indicatif::{DecimalBytes, ProgressBar, ProgressStyle};
 use inquire::Confirm;
 use std::{
-    fs::{self, File},
+    fs::{self},
     path::PathBuf,
 };
 use tar::Archive;
+use tempfile::tempfile;
 use url::Url;
 
 /// Download and decrypt a transfer from a relay server.
@@ -48,17 +49,13 @@ pub struct DownloadCommand {
     server: Url,
 }
 
-const TEMP_ARCHIVE_FILENAME: &str = "archive";
-const TEMP_ENC_ARCHIVE_FILENAME: &str = "archive.enc";
-
 impl ExecutableCommand for DownloadCommand {
     async fn run(self) -> anyhow::Result<()> {
         // Validate output directory.
         if !self.directory.exists() {
             bail!("the specified output directory does not exist");
-        }
-        if self.directory.is_file() {
-            bail!("output directory must be a directory and not a file");
+        } else if self.directory.is_file() {
+            bail!("output path must be a directory and not a file");
         }
 
         // Split the key into the appropriate parts
@@ -70,7 +67,7 @@ impl ExecutableCommand for DownloadCommand {
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
-        let api_client = XferApiClient::new(self.server);
+        let api_client = XferApiClient::new(&self.server);
         let transfer_size = {
             let res = api_client.transfer_metadata(transfer_id).await.context(
                 "failed to get transfer - transfer may have expired, transfer key may be incorrect, or server may have returned an error"
@@ -107,23 +104,24 @@ impl ExecutableCommand for DownloadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Download & decrypt the archive and unpack it on disk.
-        let temp_directory = tempfile::TempDir::with_prefix(env!("CARGO_PKG_NAME"))?;
         let mut archive = {
-            let enc_archive_path = temp_directory.path().join(TEMP_ENC_ARCHIVE_FILENAME);
+            let mut enc_archive = tempfile()?;
             api_client
-                .download_transfer(transfer_id, &enc_archive_path, |prog| {
-                    prog_bar.set_position(prog)
-                })
+                .download_transfer(
+                    transfer_id,
+                    &mut tokio::fs::File::from_std(enc_archive.try_clone()?),
+                    |prog| prog_bar.set_position(prog),
+                )
                 .await?;
             prog_bar.finish_and_clear();
             let prog_bar = ProgressBar::new_spinner();
             prog_bar.set_message("Decrypting transfer archive");
-            let archive_path = temp_directory.path().join(TEMP_ARCHIVE_FILENAME);
-            Cryptography::decrypt(decryption_key, &enc_archive_path, &archive_path).context(
+            let mut archive_file = tempfile()?;
+            Cryptography::decrypt(decryption_key, &mut enc_archive, &mut archive_file).context(
                 "failed to decrypt transfer archive - ensure you entered the transfer key correctly",
             )?;
-            fs::remove_file(enc_archive_path)?;
-            Archive::new(File::open(archive_path)?)
+            drop(enc_archive);
+            Archive::new(archive_file)
         };
         let prog_bar = ProgressBar::new_spinner();
         prog_bar.set_message("Unpacking transfer archive");

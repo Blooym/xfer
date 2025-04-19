@@ -1,8 +1,8 @@
 use anyhow::{Context, Result, bail};
 use reqwest::{Body, Response, header};
 use serde::Deserialize;
-use std::{path::PathBuf, time::Duration};
-use tokio::{fs::File, io::AsyncWriteExt};
+use std::time::Duration;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_util::io::ReaderStream;
 use url::Url;
 
@@ -22,13 +22,13 @@ pub struct CreateTransferResponse {
     pub id: String,
 }
 
-pub struct XferApiClient {
-    base_url: Url,
+pub struct XferApiClient<'a> {
+    base_url: &'a Url,
     inner_client: reqwest::Client,
 }
 
-impl XferApiClient {
-    pub fn new(base_url: Url) -> Self {
+impl<'a> XferApiClient<'a> {
+    pub fn new(base_url: &'a Url) -> Self {
         Self {
             base_url,
             inner_client: reqwest::Client::builder()
@@ -60,16 +60,16 @@ impl XferApiClient {
         Ok(res.json::<ServerConfigurationResponse>().await?)
     }
 
-    pub async fn create_transfer(
+    pub async fn create_transfer<R: AsyncReadExt + Send + 'static>(
         &self,
-        enc_archive_file: &PathBuf,
+        reader: R,
     ) -> Result<CreateTransferResponse> {
-        let file = ReaderStream::new(File::open(enc_archive_file).await?);
+        let reader = ReaderStream::new(reader);
         let res = self
             .inner_client
             .post(self.base_url.join("transfer")?)
             .header(header::CONTENT_TYPE, "application/octet-stream")
-            .body(Body::wrap_stream(file))
+            .body(Body::wrap_stream(reader))
             .timeout(Duration::from_secs(48 * 60 * 60)) // 48 hours.
             .send()
             .await
@@ -84,13 +84,12 @@ impl XferApiClient {
         Ok(res.json::<CreateTransferResponse>().await?)
     }
 
-    pub async fn download_transfer(
+    pub async fn download_transfer<W: AsyncWriteExt + Unpin>(
         &self,
         id: &str,
-        file: &PathBuf,
+        writer: &mut W,
         update_progress: impl Fn(u64),
     ) -> Result<Response> {
-        let mut file = File::create(file).await?;
         let mut res = self
             .inner_client
             .get(self.base_url.join(&format!("transfer/{id}"))?)
@@ -101,7 +100,7 @@ impl XferApiClient {
 
         let mut downloaded: u64 = 0;
         while let Some(chunk) = res.chunk().await? {
-            file.write_all(chunk.as_ref()).await?;
+            writer.write_all(chunk.as_ref()).await?;
             downloaded += chunk.len() as u64;
             update_progress(downloaded);
         }

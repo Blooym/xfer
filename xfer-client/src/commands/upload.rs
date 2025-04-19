@@ -9,11 +9,12 @@ use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
 use std::{
     env,
-    fs::{self, File},
+    fs::{self},
     ops::Add,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
+use tempfile::tempfile;
 use time::{UtcDateTime, UtcOffset, format_description};
 use url::Url;
 
@@ -40,9 +41,6 @@ pub struct UploadCommand {
     )]
     server: Url,
 }
-
-const TEMP_ARCHIVE_FILENAME: &str = "archive";
-const TEMP_ENC_ARCHIVE_FILENAME: &str = "archive.enc";
 
 impl ExecutableCommand for UploadCommand {
     async fn run(self) -> Result<()> {
@@ -71,8 +69,6 @@ impl ExecutableCommand for UploadCommand {
             return Ok(());
         }
 
-        let temp_directory =
-            tempfile::TempDir::with_prefix(format!("{}-", env!("CARGO_PKG_NAME")))?;
         let prog_bar = ProgressBar::new_spinner();
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
@@ -81,11 +77,8 @@ impl ExecutableCommand for UploadCommand {
             "Creating transfer archive for '{}'",
             path_canonical.display()
         ));
-        let archive_path = temp_directory.path().join(TEMP_ARCHIVE_FILENAME);
-        let mut tar = tar::Builder::new(GzEncoder::new(
-            File::create(&archive_path)?,
-            Compression::default(),
-        ));
+        let mut archive_file = tempfile()?;
+        let mut tar = tar::Builder::new(GzEncoder::new(&archive_file, Compression::default()));
         if self.path.is_file() {
             tar.append_path_with_name(&path_canonical, path_name)
                 .context("failed to append file to transfer archive")?;
@@ -96,11 +89,11 @@ impl ExecutableCommand for UploadCommand {
             bail!("could not determine if {path_canonical:?} is a file or directory");
         }
         tar.into_inner()?;
-        let archive_size = archive_path.metadata()?.len();
+        let archive_size = archive_file.metadata()?.len();
 
         // Validate the archive size with the server.
         prog_bar.set_message("Validating transfer archive");
-        let api_client = XferApiClient::new(self.server.clone());
+        let api_client = XferApiClient::new(&self.server);
         let server_config = api_client
             .get_server_config()
             .await
@@ -115,12 +108,12 @@ impl ExecutableCommand for UploadCommand {
 
         // Encrypt transfer archive.
         prog_bar.set_message("Encrypting transfer archive");
-        let enc_archive_path = temp_directory.path().join(TEMP_ENC_ARCHIVE_FILENAME);
-        let decryption_key = Cryptography::encrypt(&archive_path, &enc_archive_path)?;
-        fs::remove_file(archive_path)?;
+        let mut enc_archive = tempfile()?;
+        let decryption_key = Cryptography::encrypt(&mut archive_file, &mut enc_archive)?;
+        drop(archive_file);
 
         // Validate the encrypted archive size with the server.
-        let archive_size = enc_archive_path.metadata()?.len();
+        let archive_size = enc_archive.metadata()?.len();
         if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
@@ -135,10 +128,9 @@ impl ExecutableCommand for UploadCommand {
             DecimalBytes(archive_size)
         ));
         let transfer_response = api_client
-            .create_transfer(&enc_archive_path)
+            .create_transfer(tokio::fs::File::from_std(enc_archive))
             .await
             .context("failed to upload encrypted transfer archive to server")?;
-        fs::remove_file(&enc_archive_path)?;
         prog_bar.finish_and_clear();
 
         println!(
