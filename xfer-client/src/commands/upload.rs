@@ -4,12 +4,12 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use clap::{Parser, ValueHint};
-use flate2::{Compression, bufread::GzEncoder};
+use flate2::{Compression, read::GzEncoder};
 use indicatif::{DecimalBytes, ProgressBar};
 use inquire::Confirm;
 use std::{
-    env, fs,
-    io::Cursor,
+    env,
+    fs::{self, File},
     ops::Add,
     path::PathBuf,
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -41,8 +41,11 @@ pub struct UploadCommand {
     server: Url,
 }
 
+const TEMP_ARCHIVE_FILENAME: &str = "archive";
+const TEMP_ENC_ARCHIVE_FILENAME: &str = "archive.enc";
+
 impl ExecutableCommand for UploadCommand {
-    fn run(self) -> Result<()> {
+    async fn run(self) -> Result<()> {
         let path_canonical = match fs::canonicalize(&self.path) {
             Ok(path) => path,
             Err(err) => bail!(
@@ -68,6 +71,7 @@ impl ExecutableCommand for UploadCommand {
             return Ok(());
         }
 
+        let temp_directory = tempfile::tempdir()?;
         let prog_bar = ProgressBar::new_spinner();
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
@@ -76,8 +80,11 @@ impl ExecutableCommand for UploadCommand {
             "Creating transfer archive for '{}'",
             path_canonical.display()
         ));
-        let mut tar =
-            tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
+        let archive_path = temp_directory.path().join(TEMP_ARCHIVE_FILENAME);
+        let mut tar = tar::Builder::new(GzEncoder::new(
+            File::create(&archive_path)?,
+            Compression::default(),
+        ));
         if self.path.is_file() {
             tar.append_path_with_name(&path_canonical, path_name)
                 .context("failed to append file to transfer archive")?;
@@ -87,44 +94,51 @@ impl ExecutableCommand for UploadCommand {
         } else {
             bail!("could not determine if {path_canonical:?} is a file or directory");
         }
-        let mut tar = tar
-            .into_inner()
-            .context("failed to create transfer archive")?
-            .into_inner()
-            .into_inner();
+        tar.into_inner()?;
+        let archive_size = archive_path.metadata()?.len();
 
-        // Encrypt and validate the archive size with the server.
+        // Validate the archive size with the server.
         prog_bar.set_message("Validating transfer archive");
         let api_client = XferApiClient::new(self.server.clone());
         let server_config = api_client
             .get_server_config()
+            .await
             .context("failed to obtain server config, are you using the right server?")?;
         let bytes_human = DecimalBytes(server_config.transfer.max_size_bytes);
-        if tar.len() as u64 > server_config.transfer.max_size_bytes {
+        if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Transfer archive is larger than the server's maximum size of {} (was {})",
                 bytes_human,
-                DecimalBytes(tar.len() as u64)
+                DecimalBytes(archive_size)
             )
         }
+
+        // Encrypt transfer archive.
         prog_bar.set_message("Encrypting transfer archive");
-        let decryption_key = Cryptography::encrypt_in_place(&mut tar)?;
-        if tar.len() as u64 > server_config.transfer.max_size_bytes {
+        let enc_archive_path = temp_directory.path().join(TEMP_ENC_ARCHIVE_FILENAME);
+        let decryption_key = Cryptography::encrypt(&archive_path, &enc_archive_path)?;
+        fs::remove_file(archive_path)?;
+
+        // Validate the encrypted archive size with the server.
+        let archive_size = enc_archive_path.metadata()?.len();
+        if archive_size > server_config.transfer.max_size_bytes {
             bail!(
                 "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
                 bytes_human,
-                DecimalBytes(tar.len() as u64)
+                DecimalBytes(archive_size)
             )
         }
 
         // Upload the archive.
         prog_bar.set_message(format!(
             "Uploading encrypted transfer archive to server ({})",
-            DecimalBytes(tar.len() as u64)
+            DecimalBytes(archive_size)
         ));
         let transfer_response = api_client
-            .create_transfer(tar)
+            .create_transfer(&enc_archive_path)
+            .await
             .context("failed to upload encrypted transfer archive to server")?;
+        fs::remove_file(&enc_archive_path)?;
         prog_bar.finish_and_clear();
 
         println!(
