@@ -132,7 +132,7 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.finish_and_clear();
 
         println!(
-            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}'{} -o <PATH>\n\nThis transfer will expire {}",
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download {}{} -o <PATH>\n\nThis transfer will expire {}",
             path_name,
             env::current_exe()?.file_name().map_or_else(
                 || env!("CARGO_PKG_NAME"),
