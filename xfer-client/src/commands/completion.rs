@@ -22,7 +22,7 @@ fn print_completions<G: Generator>(generator: G, cmd: &mut clap::Command) {
 }
 
 impl ExecutableCommand for GenCompletionsCommand {
-    async fn run(self) -> Result<()> {
+    fn run(self) -> Result<()> {
         let mut cmd = RootCommand::command();
         eprintln!("Generating completion file for {:?}...", self.shell);
         print_completions(self.shell, &mut cmd);
