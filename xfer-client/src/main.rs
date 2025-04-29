@@ -11,9 +11,9 @@ use std::time::Duration;
 pub const DEFAULT_SERVER_URL: &str = "https://xfer.blooym.dev/"; // Must end with trailing slash.
 pub const PROGRESS_BAR_TICKRATE: Duration = Duration::from_millis(200);
 
-pub trait ExecutableCommand: Parser {
+trait ExecutableCommand: Parser {
     /// Consume `self` and run the command.
-    fn run(self) -> Result<()>;
+    async fn run(self) -> Result<()>;
 }
 
 #[derive(Parser)]
@@ -31,15 +31,16 @@ struct RootCommand {
 }
 
 impl ExecutableCommand for RootCommand {
-    fn run(self) -> Result<()> {
+    async fn run(self) -> Result<()> {
         match self.command {
-            Command::GenCompletions(cmd) => cmd.run(),
-            Command::Upload(cmd) => cmd.run(),
-            Command::Download(cmd) => cmd.run(),
+            Command::GenCompletions(cmd) => cmd.run().await,
+            Command::Upload(cmd) => cmd.run().await,
+            Command::Download(cmd) => cmd.run().await,
         }
     }
 }
 
-fn main() -> Result<()> {
-    RootCommand::parse().run()
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> Result<()> {
+    RootCommand::parse().run().await
 }
