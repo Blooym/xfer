@@ -13,7 +13,7 @@ unsafe_code = "forbid"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 axum = { version = "0.8.3", features = ["http2"] }
 bytesize = "2.0.1"
-clap = { version = "4.5.37", features = ["derive", "env"] }
+clap = { version = "4.5.36", features = ["derive", "string", "env"] }
 clap-duration = "0.1.11"
 dirs = "6.0.0"
 dotenvy = "0.15.7"
@@ -23,7 +23,6 @@ tokio = { version = "1.44.2", features = [
     "rt-multi-thread",
     "signal",
     "net",
-    "parking_lot",
 ] }
 tower-http = { version = "0.6.2", features = [
     "catch-panic",
