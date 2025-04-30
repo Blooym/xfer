@@ -12,15 +12,19 @@ const ARGON2ID_SALT_LEN: usize = 32;
 const ARGON2ID_M_COST: u32 = 512 * 1024;
 const ARGON2ID_T_COST: u32 = 6;
 const ARGON2ID_P_COST: u32 = 2;
-// Passphrase settings.
+// Passphrase generation.
 const PASSPHRASE_WORDS: usize = 5;
 const PASSPHRASE_SEPARATOR: &str = "-";
+// Cryptography implementation.
+type CryptoImpl = chacha20poly1305::XChaCha20Poly1305;
+type CryptoNonce = chacha20poly1305::XNonce;
+const CRYPTO_NONCE_SIZE: usize = <CryptoImpl as AeadCore>::NonceSize::USIZE;
 
 pub struct Cryptography;
 
 impl Cryptography {
     /// Get a new argon2 instance with program-defined settings.
-    fn argon2<'b>() -> Argon2<'b> {
+    fn argon2<'key>() -> Argon2<'key> {
         Argon2::new(
             argon2::Algorithm::default(),
             argon2::Version::default(),
@@ -76,11 +80,6 @@ impl Cryptography {
         blob.decrypt(&derived_key)
     }
 }
-
-// Cryptography implementation.
-type CryptoImpl = chacha20poly1305::XChaCha20Poly1305;
-type CryptoNonce = chacha20poly1305::XNonce;
-const CRYPTO_NONCE_SIZE: usize = <CryptoImpl as AeadCore>::NonceSize::USIZE;
 
 struct EncryptedBlob<'a> {
     salt: &'a [u8; ARGON2ID_SALT_LEN],

@@ -64,25 +64,26 @@ impl ExecutableCommand for DownloadCommand {
         // Obtain the transfer size from the server before downloading.
         // The server must send the `Content-Length` header on HEAD request
         // to display the transfer size pre-download.
-        let api_client = XferApiClient::new(self.server);
-        let human_transfer_size = {
-            let res = api_client.transfer_metadata(transfer_id).context(
-                "failed to get transfer - transfer may have expired, transfer key may be incorrect, or server may have returned an error"
-            )?;
-            DecimalBytes(
-                res.headers()
-                    .get("Content-Length")
-                    .map(|f| f.to_str().unwrap())
-                    .unwrap_or("0")
-                    .parse::<u64>()?,
-            )
+        let api_client = XferApiClient::new(&self.server);
+        let transfer_size = {
+            let res = api_client.transfer_metadata(transfer_id)
+                    .context(
+                    "failed to get transfer - transfer may have expired, transfer key may be incorrect, or server may have returned an error",
+                )?;
+            let content_length = res
+                .headers()
+                .get("Content-Length")
+                .map(|f| f.to_str().unwrap())
+                .unwrap_or("0")
+                .parse::<u64>()?;
+            DecimalBytes(content_length)
         };
 
         // Ensure the user wants to continue.
         if !self.no_confirm
             && !Confirm::new(&format!(
                 "Are you sure you want to download this transfer ({})?",
-                human_transfer_size,
+                transfer_size,
             ))
             .with_default(false)
             .prompt()?

@@ -20,13 +20,13 @@ pub struct CreateTransferResponse {
     pub id: String,
 }
 
-pub struct XferApiClient {
-    base_url: Url,
+pub struct XferApiClient<'a> {
+    base_url: &'a Url,
     inner_client: reqwest::blocking::Client,
 }
 
-impl XferApiClient {
-    pub fn new(base_url: Url) -> Self {
+impl<'a> XferApiClient<'a> {
+    pub fn new(base_url: &'a Url) -> Self {
         Self {
             base_url,
             inner_client: reqwest::blocking::Client::builder()
