@@ -72,63 +72,67 @@ impl ExecutableCommand for UploadCommand {
         prog_bar.enable_steady_tick(PROGRESS_BAR_TICKRATE);
 
         // Compress into an archive.
-        prog_bar.set_message(format!(
-            "Creating transfer archive for '{}'",
-            path_canonical.display()
-        ));
-        let mut tar =
-            tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
-        if self.path.is_file() {
-            tar.append_path_with_name(&path_canonical, path_name)
-                .context("failed to append file to transfer archive")?;
-        } else if self.path.is_dir() {
-            tar.append_dir_all(path_name, &path_canonical)
-                .context("failed to append directory recursively to transfer archive")?;
-        } else {
-            bail!("could not determine if {path_canonical:?} is a file or directory");
-        }
-        let mut tar = tar
-            .into_inner()
-            .context("failed to create transfer archive")?
-            .into_inner()
-            .into_inner();
+        let mut archive_data = {
+            prog_bar.set_message(format!(
+                "Creating transfer archive for '{}'",
+                path_canonical.display()
+            ));
+            let mut archive =
+                tar::Builder::new(GzEncoder::new(Cursor::new(vec![]), Compression::default()));
+            if self.path.is_file() {
+                archive
+                    .append_path_with_name(&path_canonical, path_name)
+                    .context("failed to append file to transfer archive")?;
+            } else if self.path.is_dir() {
+                archive
+                    .append_dir_all(path_name, &path_canonical)
+                    .context("failed to append directory recursively to transfer archive")?;
+            } else {
+                bail!("could not determine if {path_canonical:?} is a file or directory");
+            }
+            archive
+                .into_inner()
+                .context("failed to creatr transfer archive")?
+                .into_inner()
+                .into_inner()
+        };
 
         // Encrypt and validate the archive size with the server.
         prog_bar.set_message("Validating transfer archive");
-        let api_client = XferApiClient::new(self.server.clone());
+        let api_client = XferApiClient::new(&self.server);
         let server_config = api_client
             .get_server_config()
             .context("failed to obtain server config, are you using the right server?")?;
         let bytes_human = DecimalBytes(server_config.transfer.max_size_bytes);
-        if tar.len() as u64 > server_config.transfer.max_size_bytes {
+        if archive_data.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
                 "Transfer archive is larger than the server's maximum size of {} (was {})",
                 bytes_human,
-                DecimalBytes(tar.len() as u64)
+                DecimalBytes(archive_data.len() as u64)
             )
         }
         prog_bar.set_message("Encrypting transfer archive");
-        let decryption_key = Cryptography::encrypt_in_place(&mut tar)?;
-        if tar.len() as u64 > server_config.transfer.max_size_bytes {
+        let decryption_key = Cryptography::encrypt_in_place(&mut archive_data)?;
+        if archive_data.len() as u64 > server_config.transfer.max_size_bytes {
             bail!(
                 "Encrypted transfer archive is larger than the server's maximum size of {} (was {})",
                 bytes_human,
-                DecimalBytes(tar.len() as u64)
+                DecimalBytes(archive_data.len() as u64)
             )
         }
 
         // Upload the archive.
         prog_bar.set_message(format!(
             "Uploading encrypted transfer archive to server ({})",
-            DecimalBytes(tar.len() as u64)
+            DecimalBytes(archive_data.len() as u64)
         ));
         let transfer_response = api_client
-            .create_transfer(tar)
+            .create_transfer(archive_data)
             .context("failed to upload encrypted transfer archive to server")?;
         prog_bar.finish_and_clear();
 
         println!(
-            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download '{}'{} -o <PATH>\n\nThis transfer will expire {}",
+            "\nCreated transfer for '{}'\nThe recipient should run:\n\n{} download {}{} -o <PATH>\n\nThis transfer will expire {}",
             path_name,
             env::current_exe()?.file_name().map_or_else(
                 || env!("CARGO_PKG_NAME"),
