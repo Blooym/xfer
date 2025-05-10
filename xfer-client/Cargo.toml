@@ -27,4 +27,4 @@ flate2 = "1.1.1"
 rand = "0.9.1"
 argon2 = { version = "0.5.3", features = ["zeroize"] }
 eff-wordlist = { default-features = false, version = "1.0.3" }
-clap_complete = "4.5.48"
+clap_complete = "4.5.50"
