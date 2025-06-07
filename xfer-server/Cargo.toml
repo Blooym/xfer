@@ -13,18 +13,18 @@ unsafe_code = "forbid"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 axum = { version = "0.8.4", features = ["http2"] }
 bytesize = "2.0.1"
-clap = { version = "4.5.37", features = ["derive", "env"] }
+clap = { version = "4.5.39", features = ["derive", "env"] }
 clap-duration = "0.1.11"
 dirs = "6.0.0"
 dotenvy = "0.15.7"
 duration-human = "0.1.10"
-tokio = { version = "1.45.0", features = [
+tokio = { version = "1.45.1", features = [
     "macros",
     "rt-multi-thread",
     "signal",
     "net",
 ] }
-tower-http = { version = "0.6.4", features = [
+tower-http = { version = "0.6.6", features = [
     "catch-panic",
     "normalize-path",
     "trace",
