@@ -101,7 +101,7 @@ impl TransferStorage {
     pub async fn get_transfer(&self, id: &str) -> Result<ReaderStream<tokio::fs::File>> {
         debug!("Retrieving transfer with ID '{id}' from storage");
         let file_path = self.base_dir.join(id);
-        if !fs::metadata(&file_path).is_ok() {
+        if fs::metadata(&file_path).is_err() {
             return Err(anyhow::anyhow!("Transfer with id '{id}' does not exist"));
         }
         let stream = ReaderStream::new(

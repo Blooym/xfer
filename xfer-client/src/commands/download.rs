@@ -82,8 +82,7 @@ impl ExecutableCommand for DownloadCommand {
         // Ensure the user wants to continue.
         if !self.no_confirm
             && !Confirm::new(&format!(
-                "Are you sure you want to download this transfer ({})?",
-                transfer_size,
+                "Are you sure you want to download this transfer ({transfer_size})?",
             ))
             .with_default(false)
             .prompt()?
