@@ -1,10 +1,14 @@
 use anyhow::{Context, Result};
+use axum::body::BodyDataStream;
+use futures_util::StreamExt;
 use rand::seq::IndexedRandom;
 use std::{
-    fs::{self},
+    fs::{self, File},
+    io::Write,
     path::PathBuf,
     time::{Duration, SystemTime},
 };
+use tokio_util::io::ReaderStream;
 use tracing::{debug, info, trace, warn};
 
 const TRANSFER_IDENTIFIER_WORDS: usize = 4;
@@ -17,7 +21,7 @@ pub struct TransferStorage {
 }
 
 impl TransferStorage {
-    /// Create a new [`TransferStorage`] using the provided values.
+    /// Create a new [`TransferStorage`] using the provided base path and expire-after duration.
     pub fn new(base_dir: PathBuf, expire_after: Duration) -> Result<Self> {
         fs::create_dir_all(&base_dir)?;
         Ok(Self {
@@ -26,14 +30,14 @@ impl TransferStorage {
         })
     }
 
-    /// Whether a transfer is considered expired.
+    /// Check if the provided transfer has expired.
     fn is_transfer_expired(&self, id: &str) -> Result<bool> {
         Ok(self.get_transfer_expiry(id)? <= SystemTime::now())
     }
 
     /// Generate a unique transfer identifier.
     ///
-    /// Transfer identifiers are passphrases [`TRANSFER_IDENTIFIER_WORDS`] words long.
+    /// Transfer identifiers are passphrases that are [`TRANSFER_IDENTIFIER_WORDS`] words long.
     fn generate_transfer_identifier() -> String {
         eff_wordlist::large::LIST
             .choose_multiple(&mut rand::rng(), TRANSFER_IDENTIFIER_WORDS)
@@ -43,9 +47,7 @@ impl TransferStorage {
     }
 
     /// Validates that the given value is in the same format as [`Self::generate_transfer_identifier`]
-    /// would generate.
-    ///
-    /// This does not mean the identifier was created by this server, simply that the format matches.
+    /// would generate. Used for light validation of transfer identifiers when receiving them from clients.
     pub fn validate_identifier(id: &str) -> bool {
         let parts = id
             .split(TRANSFER_IDENTIFIER_WORD_SEPARATOR)
@@ -53,7 +55,7 @@ impl TransferStorage {
         parts.len() == TRANSFER_IDENTIFIER_WORDS && parts.iter().all(|word| !word.is_empty())
     }
 
-    /// Iterates through all stored transfers and removes expired ones.
+    /// Iterates through all stored transfer files and removes expired ones.
     pub fn remove_expired_transfers(&self) -> Result<()> {
         fs::read_dir(&self.base_dir)
             .unwrap()
@@ -65,7 +67,7 @@ impl TransferStorage {
                 match self.is_transfer_expired(&file_name) {
                     Ok(expired) => {
                         if expired {
-                            info!("removing expired transfer (id: '{file_name}')");
+                            info!("Removing expired transfer (id: '{file_name}')");
                             self.delete_transfer(&file_name).unwrap();
                         }
                     }
@@ -77,13 +79,13 @@ impl TransferStorage {
         Ok(())
     }
 
-    /// Get the given transfer's expiry time as a [`SystemTime`].
+    /// Get the given transfer file's expiry time as a [`SystemTime`].
     pub fn get_transfer_expiry(&self, id: &str) -> Result<SystemTime> {
         let metadata = fs::metadata(self.base_dir.join(id))?;
         // btime isn't available on all targets/environments (e.g some containers)
         // if this happens we just fallback to mtime which is usually available.
         let write_date = match metadata.created() {
-            Ok(ctime) => ctime,
+            Ok(btime) => btime,
             Err(err) => {
                 trace!("unable to get btime for {id} - using mtime: {err}");
                 metadata
@@ -91,40 +93,61 @@ impl TransferStorage {
                     .context("unable to obtain btime or mtime for file")?
             }
         };
+        trace!("Transfer (id: '{id}') created at {write_date:?}");
         Ok(write_date + self.expire_after)
     }
 
-    /// Get the raw bytes of a transfer's data from storage.
-    pub fn get_transfer(&self, id: &str) -> Result<Vec<u8>> {
-        debug!("Decrypting and fetching {id} from storage");
-        Ok(fs::read(self.base_dir.join(id))?)
+    /// Get the raw bytes of a transfer file's data from storage as a stream.
+    pub async fn get_transfer(&self, id: &str) -> Result<ReaderStream<tokio::fs::File>> {
+        debug!("Retrieving transfer with ID '{id}' from storage");
+        let file_path = self.base_dir.join(id);
+        if !fs::metadata(&file_path).is_ok() {
+            return Err(anyhow::anyhow!("Transfer with id '{id}' does not exist"));
+        }
+        let stream = ReaderStream::new(
+            tokio::fs::File::open(&file_path)
+                .await
+                .context(format!("Failed to open transfer file: {id}"))?,
+        );
+        Ok(stream)
     }
 
-    /// Save the transfer bytes to storage.
+    /// Get the size of a transfer file in bytes.
+    pub fn get_transfer_size(&self, id: &str) -> Result<u64> {
+        let metadata = fs::metadata(self.base_dir.join(id))?;
+        Ok(metadata.len())
+    }
+
+    /// Save the given Axum BodyDataStream to storage as a transfer file.
     ///
-    /// Returns the identifier that the transfer was stored with.
-    pub fn create_transfer(&self, bytes: &[u8]) -> Result<String> {
+    /// Returns the identifier that the transfer was stored with upon success.
+    pub async fn create_transfer(&self, mut bytes: BodyDataStream) -> Result<String> {
         let id = loop {
             let id = Self::generate_transfer_identifier();
             if !self.transfer_exists(&id).unwrap() {
                 break id;
             }
         };
-        debug!("Encrypting and saving {id} to storage");
-        fs::write(self.base_dir.join(&id), bytes)?;
+        debug!("Creating transfer with ID '{id}' in storage");
+        let mut file = File::create(self.base_dir.join(&id))?;
+        while let Some(chunk) = bytes.next().await {
+            let chunk = chunk.context("Failed to read chunk from stream")?;
+            file.write_all(&chunk)
+                .context("Failed to write chunk to file")?;
+        }
         Ok(id)
     }
 
-    /// Delete the given transfer from storage.
+    /// Delete the given transfer file from storage.
     pub fn delete_transfer(&self, id: &str) -> Result<()> {
-        debug!("Deleting {id} from storage");
+        debug!("Deleting transfer with ID '{id}' from storage");
         fs::remove_file(self.base_dir.join(id))?;
         Ok(())
     }
 
-    /// Whether a transfer exists in storage.
+    /// Whether a transfer file exists in storage.
     pub fn transfer_exists(&self, id: &str) -> Result<bool> {
-        debug!("Checking if {id} exists in storage");
+        debug!("Checking for transfer with ID '{id}' in storage");
         Ok(fs::exists(self.base_dir.join(self.base_dir.join(id)))?)
     }
 }
