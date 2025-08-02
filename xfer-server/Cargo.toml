@@ -13,16 +13,17 @@ unsafe_code = "forbid"
 anyhow = { version = "1.0.98", features = ["backtrace"] }
 axum = { version = "0.8.4", features = ["http2"] }
 bytesize = "2.0.1"
-clap = { version = "4.5.39", features = ["derive", "env"] }
+clap = { version = "4.5.42", features = ["derive", "env"] }
 clap-duration = "0.1.11"
 dirs = "6.0.0"
 dotenvy = "0.15.7"
 duration-human = "0.1.10"
-tokio = { version = "1.45.1", features = [
+tokio = { version = "1.47.1", features = [
     "macros",
     "rt-multi-thread",
     "signal",
     "net",
+    "fs",
 ] }
 tower-http = { version = "0.6.6", features = [
     "catch-panic",
@@ -32,6 +33,7 @@ tower-http = { version = "0.6.6", features = [
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 serde = { version = "1.0.219", features = ["derive"] }
-infer = "0.19.0"
-rand = "0.9.1"
+rand = "0.9.2"
 eff-wordlist = { default-features = false, version = "1.0.3" }
+futures-util = "0.3.31"
+tokio-util = "0.7.15"
