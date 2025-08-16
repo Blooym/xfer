@@ -22,7 +22,7 @@ Transfer files and folders between devices via the internet with end-to-end encr
 ### Using Cargo
 
 ```sh
-cargo install --git https://github.com/Blooym/xfer.git xfer
+cargo install --git https://codeberg.org/Blooym/xfer.git xfer
 ```
 
 ## Usage
@@ -57,9 +57,9 @@ When downloading a transfer files will be placed in the output directory, and fo
 
 *Available servers will change with time; If the default server is shut down an update will be pushed to remove it as the default.*
 
-| Server            | Notes                                                                                                                              | Country | Operator                             |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------------ |
-| `xfer.blooym.dev` | Low transfer retention time and ratelimits on how many transfers can be made in a time period. Good for small-to-medium transfers. | Germany | [@Blooym](https://github.com/Blooym) |
+| Server            | Notes                                                                                                                              | Country | Operator                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ------- | ----------------------------- |
+| `xfer.blooym.dev` | Low transfer retention time and ratelimits on how many transfers can be made in a time period. Good for small-to-medium transfers. | Germany | [@Blooym](https://blooym.dev) |
 
 
 Want to host your own? Learn more about running an xfer server by reading the [xfer server documentation](./xfer-server//README.md).
