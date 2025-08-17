@@ -8,7 +8,7 @@ use commands::{DownloadCommand, GenCompletionsCommand, UploadCommand};
 use std::time::Duration;
 
 // Compile-time options
-pub const DEFAULT_SERVER_URL: &str = "https://xfer.blooym.dev/"; // Must end with trailing slash.
+pub const DEFAULT_SERVER_URL: &str = "https://xfer.dollware.net/"; // Must end with trailing slash.
 pub const PROGRESS_BAR_TICKRATE: Duration = Duration::from_millis(200);
 
 pub trait ExecutableCommand: Parser {
